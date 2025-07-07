@@ -58,13 +58,140 @@ void calculate_fps(struct FPS *p)
     p->previous_time = p->current_time;
 }
 
-enum CamaraPosition
+struct Character
 {
-    SOUTH = 0,
-    WEST = 1,
-    NORTH = 2,
-    EAST = 3,
+    Vector3 position;
 };
+
+#define INITIAL_ANGLE 45.0f
+#define INITIAL_RADIUS 30.f
+#define DIRECTION_CLOCKWISE -1.0f
+#define DIRECTION_COUNTER_CLOCKWISE 1.0f
+#define ZOOM 0.5f
+#define MAX_ZOOM 50.0f
+#define MIN_ZOOM 20.0f
+#define ROTATION_FRAME 45.0f
+
+enum CameraStep
+{
+    STEP_SOUTH = 0,
+    STEP_WEST = 1,
+    STEP_NORTH = 2,
+    STEP_EAST = 3,
+};
+
+struct Camera
+{
+    Camera3D instance;
+    enum CameraStep step;
+    float dimension;
+    float angle;
+    bool rotating;
+    float direction;
+    float current_rotation_frame;
+    float rotation_frame;
+};
+
+struct Camera create_camera(const Vector3 at)
+{
+    // Init camera
+    Camera3D camera = {0};
+    // Camera position
+    camera.position = (Vector3){
+        at.x + INITIAL_RADIUS * sin(INITIAL_ANGLE * DEG2RAD),
+        INITIAL_RADIUS,
+        at.z + INITIAL_RADIUS * cos(INITIAL_ANGLE * DEG2RAD)};
+    // Camera looking at point
+    camera.target = at;
+    // Camera up vector (rotation towards target)
+    camera.up = (Vector3){0.0f, 1.0f, 0.0f};
+    // Camera field-of-view Y
+    camera.fovy = 45.0f;
+    // Camera mode type
+    camera.projection = CAMERA_PERSPECTIVE;
+
+    return (struct Camera){
+        .instance = camera,
+        .step = STEP_SOUTH,
+        .angle = INITIAL_ANGLE,
+        .dimension = INITIAL_RADIUS,
+        .rotating = false,
+        .current_rotation_frame = 0.0f,
+        .rotation_frame = ROTATION_FRAME,
+    };
+}
+
+void clockwise_rotation_camera(struct Camera *camera)
+{
+    if (!camera->rotating)
+    {
+        // update step pointing to the next one
+        if (camera->step == STEP_SOUTH)
+            camera->step = STEP_EAST;
+        else
+            --camera->step;
+
+        camera->rotating = !camera->rotating;
+        camera->direction = DIRECTION_CLOCKWISE;
+    }
+}
+
+void counter_clockwise_rotation_camera(struct Camera *camera)
+{
+    if (!camera->rotating)
+    {
+        // update step pointing to the next one
+        if (camera->step == STEP_EAST)
+            camera->step = STEP_SOUTH;
+        else
+            ++camera->step;
+
+        camera->rotating = !camera->rotating;
+        camera->direction = DIRECTION_COUNTER_CLOCKWISE;
+    }
+}
+
+void calculate_position_camera(struct Camera *camera, const Vector3 target)
+{
+    camera->instance.position.y = camera->dimension;
+    camera->instance.position.x = target.x + camera->dimension * sin(camera->angle * DEG2RAD);
+    camera->instance.position.z = target.z + camera->dimension * cos(camera->angle * DEG2RAD);
+}
+
+void calculate_angle_camera(struct Camera *camera)
+{
+    if (camera->rotating)
+    {
+        if (camera->current_rotation_frame >= camera->rotation_frame)
+        {
+            camera->current_rotation_frame = 0;
+            camera->rotating = false;
+            if (camera->step == STEP_SOUTH)
+                camera->angle = INITIAL_ANGLE;
+        }
+        else
+        {
+            camera->angle += camera->direction * 2;
+            // calculate_position_camera(camera, target);
+            ++camera->current_rotation_frame;
+        }
+    }
+}
+
+void zoom_in_camera(struct Camera *camera)
+{
+    if (camera->dimension == MIN_ZOOM)
+        return;
+
+    camera->dimension -= ZOOM;
+}
+void zoom_out_camera(struct Camera *camera)
+{
+    if (camera->dimension == MAX_ZOOM)
+        return;
+
+    camera->dimension += ZOOM;
+}
 
 int main(void)
 {
@@ -88,107 +215,62 @@ int main(void)
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.fps.target);
 
-    // Define the camera to look into our 3d world
-    int camara_current_position = SOUTH;
-
-    Vector3 cubePosition = {0.0f, 1.0f, 0.0f};
-    Vector3 cubePosition2 = {0.0f, 1.0f, 2.0f};
-
-    bool is_rotating = false;
-    int total_frames_rotate = 45;
-    int frames_rotate = 0;
-    float angle = 0.0f;
-    float way = 0.0f;
-
-    Camera3D camera = {0};
-    camera.position = (Vector3){15.0f * sin(angle * DEG2RAD), 10.0f, 15.0f * cos(angle * DEG2RAD)}; // Camera position
-    camera.target = (Vector3){0.0f, 0.0f, 0.0f};                                                    // Camera looking at point
-    camera.up = (Vector3){0.0f, 1.0f, 0.0f};                                                        // Camera up vector (rotation towards target)
-    camera.fovy = 45.0f;                                                                            // Camera field-of-view Y
-    camera.projection = CAMERA_PERSPECTIVE;                                                         // Camera mode type
+    struct Character hero = {.position = {5.0f, 1.0f, 4.0f}};
+    struct Camera camera = create_camera(hero.position);
 
     while (!WindowShouldClose())
     {
 
-        if (IsKeyDown(KEY_RIGHT))
-        {
-            if (!is_rotating)
-            {
-                if (camara_current_position == EAST)
-                {
-                    camara_current_position = SOUTH;
-                }
-                else
-                {
-                    ++camara_current_position;
-                }
-                // angle = camara_positions[camara_current_position];
-                is_rotating = !is_rotating;
-                way = 1.0f;
-            }
-        }
+        if (IsKeyDown(KEY_UP))
+            zoom_in_camera(&camera);
 
-        if (IsKeyDown(KEY_LEFT))
-        {
-            if (!is_rotating)
-            {
-                if (camara_current_position == SOUTH)
-                {
-                    camara_current_position = EAST;
-                }
-                else
-                {
-                    --camara_current_position;
-                }
-                // angle = camara_positions[camara_current_position];
-                is_rotating = !is_rotating;
-                way = -1.0f;
-            }
-        }
+        if (IsKeyDown(KEY_DOWN))
+            zoom_out_camera(&camera);
 
-        if (is_rotating)
-        {
-            if (frames_rotate >= total_frames_rotate)
-            {
-                frames_rotate = 0;
-                is_rotating = false;
-                if (camara_current_position == SOUTH)
-                    angle = 0;
-            }
-            else
-            {
-                angle += way * 2;
-                camera.position.x = 15.0f * sin(angle * DEG2RAD);
-                camera.position.z = 15.0f * cos(angle * DEG2RAD);
-                ++frames_rotate;
-            }
-        }
+        if (IsKeyPressed(KEY_LEFT))
+            clockwise_rotation_camera(&camera);
+
+        if (IsKeyPressed(KEY_RIGHT))
+            counter_clockwise_rotation_camera(&camera);
+
+        calculate_angle_camera(&camera);
+        calculate_position_camera(&camera, hero.position);
 
         BeginDrawing();
         ClearBackground((Color){15, 15, 15, 255});
+
+        BeginMode3D(camera.instance);
+        DrawCube(hero.position, 0.5f, 2.0f, 0.5f, RED);
+        DrawCubeWires(hero.position, 0.5f, 2.0f, 0.5f, BLUE);
+        DrawCube((Vector3){2.0f, 2.0f, 0.0f}, 1.5f, 2.0f, 0.5f, WHITE);
+        DrawCubeWires((Vector3){2.0f, 2.0f, 0.0f}, 1.5f, 2.0f, 0.5f, BLUE);
+        DrawCube((Vector3){-1.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, WHITE);
+        DrawCubeWires((Vector3){-1.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, BLUE);
+        DrawSphere((Vector3){-5.0f, 0.0f, 3.0f}, 0.5f, WHITE);
+        DrawSphereWires((Vector3){-5.0f, 0.0f, 3.0f}, 0.5f, 16, 16, BLUE);
+        DrawCube((Vector3){.0f, 5.0f, 15.0f}, 20.0f, 10.0f, 10.0f, BEIGE);
+        DrawCubeWires((Vector3){.0f, 5.0f, 15.0f}, 20.0f, 10.0f, 10.0f, BLUE);
+        DrawCube((Vector3){-10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BROWN);
+        DrawCubeWires((Vector3){-10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BLUE);
+        DrawCube((Vector3){10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BROWN);
+        DrawCubeWires((Vector3){10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BLUE);
+        DrawCube((Vector3){.0f, 9.f, 18.0f}, 5.0f, 20.0f, 5.0f, BROWN); // main tower
+        DrawCubeWires((Vector3){.0f, 9.f, 18.0f}, 5.0f, 20.0f, 5.0f, BLUE);
+        // DrawPlane((Vector3){.0f, .0f, .0f}, (Vector2){100.f, 100.0f}, DARKGRAY);
+
+        DrawGrid(150, 0.25f);
+
+        EndMode3D();
 
         if (game.debug) /* game.fps.delta_time != 0 */
         {
             DrawText(TextFormat("%s %s", game.name, game.version), 10, 10, 10, GREEN);
             DrawText(TextFormat("FPS Target: %i", game.fps.target), 10, 25, 10, GREEN);
             DrawText(TextFormat("FPS Current: %i", (int)(1.0f / game.fps.delta_time)), 10, 40, 10, GREEN);
-            DrawText(TextFormat("Camara: %i x=%.2f y=%.2f z=%.2f", camara_current_position, camera.position.x, camera.position.y, camera.position.z), 10, 55, 10, GREEN);
-            DrawText(TextFormat("Camara Angle: %f", angle), 10, 70, 10, GREEN);
+            DrawText(TextFormat("Camara: %i x=%.2f y=%.2f z=%.2f", camera.step, camera.instance.position.x, camera.instance.position.y, camera.instance.position.z), 10, 55, 10, GREEN);
+            DrawText(TextFormat("Camara Angle: %f", camera.angle), 10, 70, 10, GREEN);
+            DrawText(TextFormat("Hero: x=%.2f y=%.2f z=%.2f", hero.position.x, hero.position.y, hero.position.z), 10, 85, 10, GREEN);
         }
-
-        BeginMode3D(camera);
-        DrawCube((Vector3){0.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, RED);
-        DrawCubeWires((Vector3){0.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, BLUE);
-        DrawCube((Vector3){2.0f, 2.0f, 0.0f}, 1.5f, 2.0f, 0.5f, WHITE);
-        DrawCubeWires((Vector3){2.0f, 2.0f, 0.0f}, 1.5f, 2.0f, 0.5f, BLUE);
-        DrawCube((Vector3){-1.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, WHITE);
-        DrawCubeWires((Vector3){-1.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, BLUE);
-        DrawSphere((Vector3){-5.0f, 0.0f, 3.0f}, 0.5f, WHITE);
-        DrawSphereWires((Vector3){-5.0f, 0.0f, 3.0f}, 0.5f, 8, 8, BLUE);
-        DrawGrid(50, 0.25f);
-
-        EndMode3D();
-
         EndDrawing();
 
         if (game.debug)
