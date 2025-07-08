@@ -20,7 +20,7 @@ Git best practices:
 
 Use for developing new features.
 
-Format: `feature/<short-description>`. Include a ticket or issue ID: `feature/123-add-user-profile`.
+Format: `feat/<short-description>`. Include a ticket or issue ID: `feat/123-add-user-profile`.
 
 ## Bugfix Branches
 
