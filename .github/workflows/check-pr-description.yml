@@ -1,0 +1,33 @@
+name: Check PR Description
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  check-description:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if PR description is empty
+        run: |
+          if [ -z "${{ github.event.pull_request.body }}" ] || [ "${{ github.event.pull_request.body }}" == " " ]; then
+            echo "❌ PR must have a description."
+            exit 1
+          fi
+
+          echo "✅ PR has a description."
+
+      - name: Fail if PR description does not reference an issue
+        run: |
+          DESCRIPTION="${{ github.event.pull_request.body }}"
+
+          echo "PR Description:"
+          echo "$DESCRIPTION"
+
+          if [[ ! "$DESCRIPTION" =~ Issue:\ #[0-9]+ ]]; then
+            echo "❌ PR description must contain an issue reference like 'Issue: #1'"
+            exit 1
+          fi
+
+          echo "✅ PR description is valid and contains an issue reference."
