@@ -25,7 +25,7 @@ jobs:
           echo "PR Description:"
           echo "$DESCRIPTION"
 
-          if [[ ! "$DESCRIPTION" =~ Issue:\ #[0-9]+ ]]; then
+          if [[ ! "$DESCRIPTION" =~ Issue\ #[0-9]+ ]]; then
             echo "❌ PR description must contain an issue reference like 'Issue: #1'"
             exit 1
           fi
