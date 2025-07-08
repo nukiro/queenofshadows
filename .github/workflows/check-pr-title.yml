@@ -15,8 +15,8 @@ jobs:
 
           echo "PR Title: $TITLE"
 
-          if [[ ! "$TITLE" =~ ^(feat|fix|chore): ]]; then
-            echo "❌ PR title must start with 'feat:', 'fix:' or 'chore:'"
+          if [[ ! "$TITLE" =~ ^(feat|fix|chore|doc): ]]; then
+            echo "❌ PR title must start with 'feat:', 'fix:', 'chore:' or 'doc:'"
             exit 1
           fi
 
