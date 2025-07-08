@@ -7,9 +7,10 @@ on:
 
 jobs:
   check-base-branch:
+    if: github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR base branch is "release"
+      - name: Check PR branch is "release"
         run: |
           BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
           echo "PR Base Branch: $BASE_BRANCH"
