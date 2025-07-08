@@ -16,7 +16,7 @@ jobs:
           echo "PR Base Branch: $BASE_BRANCH"
 
           if [[ "$BASE_BRANCH" != "release/" ]]; then
-            echo "❌ PR must target a 'release/*' branch."
+            echo "❌ PR must target by a 'release/*' branch."
             exit 1
           fi
 

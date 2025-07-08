@@ -25,9 +25,23 @@ jobs:
           echo "PR Description:"
           echo "$DESCRIPTION"
 
-          if [[ ! "$DESCRIPTION" =~ Issue:\ #[0-9]+ ]]; then
+          if [[ ! "$DESCRIPTION" =~ Issue\ #[0-9]+ ]]; then
             echo "❌ PR description must contain an issue reference like 'Issue: #1'"
             exit 1
           fi
 
           echo "✅ PR description is valid and contains an issue reference."
+
+      - name: Fail if PR description does not order an issue to auto-close
+        run: |
+          DESCRIPTION="${{ github.event.pull_request.body }}"
+
+          echo "PR Description:"
+          echo "$DESCRIPTION"
+
+          if [[ ! "$DESCRIPTION" =~ (Fixes|Closes|Resolves)\ #[0-9]+ ]]; then
+            echo "❌ PR description must include 'Fixes #<issue>' to auto-close."
+            exit 1
+          fi
+
+          echo "✅ PR description is valid and contains an issue auto-close order."
