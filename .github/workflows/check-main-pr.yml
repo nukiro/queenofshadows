@@ -1,0 +1,22 @@
+name: Enforce release Branches in main PRs
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  check-base-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR base branch is "release"
+        run: |
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          echo "PR Base Branch: $BASE_BRANCH"
+
+          if [[ "$BASE_BRANCH" != "release/" ]]; then
+            echo "❌ PR must target a 'release/*' branch."
+            exit 1
+          fi
+
+          echo "✅ PR targets the correct base branch."
