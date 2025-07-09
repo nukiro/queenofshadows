@@ -2,30 +2,33 @@
 
 #include <raylib.h>
 
-enum CameraStep
+enum CameraPosition
 {
-    STEP_SOUTH = 0,
-    STEP_WEST = 1,
-    STEP_NORTH = 2,
-    STEP_EAST = 3,
+    POSITION_SOUTH = 0,
+    POSITION_WEST = 1,
+    POSITION_NORTH = 2,
+    POSITION_EAST = 3,
 };
 
 struct Camera
 {
-    Camera3D instance;
-    enum CameraStep step;
-    float dimension;
+    // raylib Camera3D instance
+    Camera3D view;
+    // position: South, West, etc.
+    enum CameraPosition position;
+    // camara initial box (x,y,z)
+    float radius;
+    // camara initial angle from 0
     float angle;
-    bool rotating;
-    float direction;
-    float current_rotation_frame;
-    float rotation_frame;
 };
 
 struct Camera create_camera(const Vector3 at);
-void clockwise_rotation_camera(struct Camera *camera);
-void counter_clockwise_rotation_camera(struct Camera *camera);
-void calculate_position_camera(struct Camera *camera, const Vector3 target);
-void calculate_angle_camera(struct Camera *camera);
+
+const char *position_camera(const struct Camera *camera);
+
 void zoom_in_camera(struct Camera *camera);
 void zoom_out_camera(struct Camera *camera);
+void clockwise_rotate_camera(struct Camera *camera);
+void counter_clockwise_rotate_camera(struct Camera *camera);
+
+void update_camera(struct Camera *camera, const Vector3 target);

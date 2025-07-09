@@ -69,7 +69,7 @@ int main(void)
 {
     /* Initialization */
 
-    struct Player player = {"UUID_PLAYER", true};
+    // struct Player player = {"UUID_PLAYER", true};
     struct Game game =
         {
             .version = "v0.0.1",
@@ -87,11 +87,15 @@ int main(void)
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.fps.target);
 
-    struct Character hero = {.position = {5.0f, 1.0f, 4.0f}};
+    struct Character hero = {.position = {.0f, 1.0f, .0f}};
+    // initialize camema by hero position
     struct Camera camera = create_camera(hero.position);
 
     while (!WindowShouldClose())
     {
+        // Update
+        if (game.debug)
+            calculate_fps(&game.fps);
 
         if (IsKeyDown(KEY_UP))
             zoom_in_camera(&camera);
@@ -100,53 +104,35 @@ int main(void)
             zoom_out_camera(&camera);
 
         if (IsKeyPressed(KEY_LEFT))
-            clockwise_rotation_camera(&camera);
+            clockwise_rotate_camera(&camera);
 
         if (IsKeyPressed(KEY_RIGHT))
-            counter_clockwise_rotation_camera(&camera);
+            counter_clockwise_rotate_camera(&camera);
 
-        calculate_angle_camera(&camera);
-        calculate_position_camera(&camera, hero.position);
+        update_camera(&camera, hero.position);
+
+        // Drawing
 
         BeginDrawing();
         ClearBackground((Color){15, 15, 15, 255});
 
-        BeginMode3D(camera.instance);
+        BeginMode3D(camera.view);
+
         DrawCube(hero.position, 0.5f, 2.0f, 0.5f, RED);
         DrawCubeWires(hero.position, 0.5f, 2.0f, 0.5f, BLUE);
-        DrawCube((Vector3){2.0f, 2.0f, 0.0f}, 1.5f, 2.0f, 0.5f, WHITE);
-        DrawCubeWires((Vector3){2.0f, 2.0f, 0.0f}, 1.5f, 2.0f, 0.5f, BLUE);
-        DrawCube((Vector3){-1.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, WHITE);
-        DrawCubeWires((Vector3){-1.0f, 1.0f, 0.0f}, 0.5f, 2.0f, 0.5f, BLUE);
-        DrawSphere((Vector3){-5.0f, 0.0f, 3.0f}, 0.5f, WHITE);
-        DrawSphereWires((Vector3){-5.0f, 0.0f, 3.0f}, 0.5f, 16, 16, BLUE);
-        DrawCube((Vector3){.0f, 5.0f, 15.0f}, 20.0f, 10.0f, 10.0f, BEIGE);
-        DrawCubeWires((Vector3){.0f, 5.0f, 15.0f}, 20.0f, 10.0f, 10.0f, BLUE);
-        DrawCube((Vector3){-10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BROWN);
-        DrawCubeWires((Vector3){-10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BLUE);
-        DrawCube((Vector3){10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BROWN);
-        DrawCubeWires((Vector3){10.0f, 7.5f, 15.0f}, 5.0f, 15.0f, 5.0f, BLUE);
-        DrawCube((Vector3){.0f, 9.f, 18.0f}, 5.0f, 20.0f, 5.0f, BROWN); // main tower
-        DrawCubeWires((Vector3){.0f, 9.f, 18.0f}, 5.0f, 20.0f, 5.0f, BLUE);
-        // DrawPlane((Vector3){.0f, .0f, .0f}, (Vector2){100.f, 100.0f}, DARKGRAY);
 
-        DrawGrid(150, 0.25f);
+        DrawGrid(100, 0.25f);
 
         EndMode3D();
 
-        if (game.debug) /* game.fps.delta_time != 0 */
+        if (game.debug)
         {
             DrawText(TextFormat("%s %s", game.name, game.version), 10, 10, 10, GREEN);
-            DrawText(TextFormat("FPS Target: %i", game.fps.target), 10, 25, 10, GREEN);
-            DrawText(TextFormat("FPS Current: %i", (int)(1.0f / game.fps.delta_time)), 10, 40, 10, GREEN);
-            DrawText(TextFormat("Camara: %i x=%.2f y=%.2f z=%.2f", camera.step, camera.instance.position.x, camera.instance.position.y, camera.instance.position.z), 10, 55, 10, GREEN);
-            DrawText(TextFormat("Camara Angle: %f", camera.angle), 10, 70, 10, GREEN);
-            DrawText(TextFormat("Hero: x=%.2f y=%.2f z=%.2f", hero.position.x, hero.position.y, hero.position.z), 10, 85, 10, GREEN);
+            DrawText(TextFormat("FPS Current: %i (target: %i)", (int)(1.0f / game.fps.delta_time), game.fps.target), 10, 30, 10, GREEN);
+            DrawText(TextFormat("Camara: %s (%.0f)", position_camera(&camera), camera.angle), 10, 45, 10, GREEN);
+            DrawText(TextFormat("Hero: x=%.2f y=%.2f z=%.2f", hero.position.x, hero.position.y, hero.position.z), 10, 60, 10, GREEN);
         }
         EndDrawing();
-
-        if (game.debug)
-            calculate_fps(&game.fps);
     }
 
     CloseWindow();
