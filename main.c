@@ -1,4 +1,5 @@
 #include "camera.h"
+#include "hero.h"
 
 #include <raylib.h>
 #include <raymath.h>
@@ -60,11 +61,6 @@ void calculate_fps(struct FPS *p)
     p->previous_time = p->current_time;
 }
 
-struct Character
-{
-    Vector3 position;
-};
-
 int main(void)
 {
     /* Initialization */
@@ -87,7 +83,8 @@ int main(void)
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.fps.target);
 
-    struct Character hero = {.position = {.0f, 1.0f, .0f}};
+    struct Hero hero = create_hero((Vector2){.0f, .0f});
+    Vector3 targetPos = hero.position;
     // initialize camema by hero position
     struct Camera camera = create_camera(hero.position);
 
@@ -97,6 +94,31 @@ int main(void)
         if (game.debug)
             calculate_fps(&game.fps);
 
+        // Action Input
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
+            // Get mouse position and generate a ray
+            Vector2 mousePos = GetMousePosition();
+            Ray ray = GetMouseRay(mousePos, camera.view);
+
+            // ground plane is at y = 0
+            if (ray.direction.y != 0)
+            {
+                float t = -ray.position.y / ray.direction.y; // solve for y = 0
+                if (t > 0)
+                    targetPos = (Vector3){
+                        ray.position.x + ray.direction.x * t,
+                        hero.position.y, // hero position at ground plane
+                        ray.position.z + ray.direction.z * t};
+            }
+        }
+
+        // Smoothly move character toward target
+        float speed = 0.05f; // Smoothing speed
+        hero.position = Vector3Lerp(hero.position, targetPos, speed);
+        camera.view.target = hero.position;
+
+        // Camera Input
         if (IsKeyDown(KEY_W))
             zoom_in_camera(&camera);
 

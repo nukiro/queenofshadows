@@ -52,6 +52,12 @@ struct Camera create_camera(const Vector3 at)
     // Mode type
     view.projection = CAMERA_PERSPECTIVE;
 
+    // initialize file camera variables
+    is_rotating = false;
+    total_rotation_frame = ROTATION_FRAME;
+    current_rotation_angle = INITIAL_ANGLE;
+    current_rotation_frame = 0.0f;
+
     // variables to hold camara status
     return (struct Camera){
         .view = view,
@@ -59,12 +65,6 @@ struct Camera create_camera(const Vector3 at)
         .angle = INITIAL_ANGLE,
         .radius = INITIAL_RADIUS,
     };
-
-    // initialize file camera variables
-    is_rotating = false;
-    total_rotation_frame = ROTATION_FRAME;
-    current_rotation_angle = INITIAL_ANGLE;
-    current_rotation_frame = 0.0f;
 }
 
 void zoom_in_camera(struct Camera *camera)
@@ -155,8 +155,15 @@ void update_angle_camera()
     }
 }
 
+void update_target_camera(struct Camera *camera, const Vector3 target)
+{
+    // to follow our hero when it moves
+    camera->view.target = target;
+}
+
 void update_camera(struct Camera *camera, const Vector3 target)
 {
+    update_target_camera(camera, target);
     update_angle_camera();
     update_position_camera(camera, target);
 }
@@ -176,4 +183,23 @@ const char *position_camera(const struct Camera *camera)
     default:
         return "Unknown";
     }
+}
+
+Vector2 raycast_camera(const struct Camera *camera, const Vector2 position)
+{
+    Vector2 target = {0};
+    Ray ray = GetMouseRay(position, camera->view);
+
+    // ground plane is at y = 0
+    if (ray.direction.y != 0)
+    {
+        float t = -ray.position.y / ray.direction.y; // solve for y = 0
+        if (t > 0)
+            // y = 0.0f = ground plane
+            target = (Vector2){
+                ray.position.x + ray.direction.x * t,
+                ray.position.z + ray.direction.z * t};
+    }
+
+    return target;
 }
