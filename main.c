@@ -97,16 +97,16 @@ int main(void)
         if (game.debug)
             calculate_fps(&game.fps);
 
-        if (IsKeyDown(KEY_UP))
+        if (IsKeyDown(KEY_W))
             zoom_in_camera(&camera);
 
-        if (IsKeyDown(KEY_DOWN))
+        if (IsKeyDown(KEY_S))
             zoom_out_camera(&camera);
 
-        if (IsKeyPressed(KEY_LEFT))
+        if (IsKeyPressed(KEY_A))
             clockwise_rotate_camera(&camera);
 
-        if (IsKeyPressed(KEY_RIGHT))
+        if (IsKeyPressed(KEY_D))
             counter_clockwise_rotate_camera(&camera);
 
         update_camera(&camera, hero.position);
@@ -130,7 +130,7 @@ int main(void)
             DrawText(TextFormat("%s %s", game.name, game.version), 10, 10, 10, GREEN);
             DrawText(TextFormat("FPS Current: %i (target: %i)", (int)(1.0f / game.fps.delta_time), game.fps.target), 10, 30, 10, GREEN);
             DrawText(TextFormat("Camara: %s (%.0f)", position_camera(&camera), camera.angle), 10, 45, 10, GREEN);
-            DrawText(TextFormat("Hero: x=%.2f y=%.2f z=%.2f", hero.position.x, hero.position.y, hero.position.z), 10, 60, 10, GREEN);
+            DrawText(TextFormat("Hero: %.2f %.2f", hero.position.x, hero.position.z), 10, 60, 10, GREEN);
         }
         EndDrawing();
     }
