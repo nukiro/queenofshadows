@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c23
 
-SRC=main.c
+SRC=camera.c main.c
 OBJS=$(SRC:.c=.o)
 
 LIBS=-lraylib -lm -ldl -lpthread -lGL -lrt -lX11
