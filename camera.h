@@ -20,6 +20,10 @@ struct Camera
     float radius;
     // camara initial angle from 0
     float angle;
+    // control when engine loop is rotating the camera
+    // do not let to do it if Left of Right key is pressed
+    // when camera is rotating
+    bool is_rotating;
 };
 
 struct Camera create_camera(const Vector3 at);

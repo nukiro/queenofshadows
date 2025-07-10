@@ -1,5 +1,6 @@
 #include "camera.h"
 
+#include <stdio.h>
 #include <raylib.h>
 #include <raymath.h>
 
@@ -20,10 +21,6 @@
 #define ROTATION_FRAME 45.0f
 
 // Variables to hold current camera rotation
-// control when engine loop is rotating the camera
-// do not let to do it if Left of Right key is pressed
-// when camera is rotating
-bool is_rotating = false;
 // numbers of frame to complete the rotation
 float total_rotation_frame = ROTATION_FRAME;
 // variables to control rotation when is_rotating boolean is true
@@ -53,7 +50,6 @@ struct Camera create_camera(const Vector3 at)
     view.projection = CAMERA_PERSPECTIVE;
 
     // initialize file camera variables
-    is_rotating = false;
     total_rotation_frame = ROTATION_FRAME;
     current_rotation_angle = INITIAL_ANGLE;
     current_rotation_frame = 0.0f;
@@ -64,6 +60,7 @@ struct Camera create_camera(const Vector3 at)
         .position = POSITION_SOUTH,
         .angle = INITIAL_ANGLE,
         .radius = INITIAL_RADIUS,
+        .is_rotating = false,
     };
 }
 
@@ -85,7 +82,7 @@ void zoom_out_camera(struct Camera *camera)
 
 void clockwise_rotate_camera(struct Camera *camera)
 {
-    if (!is_rotating)
+    if (!camera->is_rotating)
     {
         // update camera status
         // update step pointing to the next one
@@ -101,14 +98,14 @@ void clockwise_rotate_camera(struct Camera *camera)
         }
 
         // update rotation variables
-        is_rotating = true;
+        camera->is_rotating = true;
         direction = DIRECTION_CLOCKWISE;
     }
 }
 
 void counter_clockwise_rotate_camera(struct Camera *camera)
 {
-    if (!is_rotating)
+    if (!camera->is_rotating)
     {
         // update camera status
         // update step pointing to the next one
@@ -124,7 +121,7 @@ void counter_clockwise_rotate_camera(struct Camera *camera)
         }
 
         // update rotation variables
-        is_rotating = true;
+        camera->is_rotating = true;
         direction = DIRECTION_COUNTER_CLOCKWISE;
     }
 }
@@ -136,15 +133,15 @@ void update_position_camera(struct Camera *camera, const Vector3 target)
     camera->view.position.z = target.z + camera->radius * cos(current_rotation_angle * DEG2RAD);
 }
 
-void update_angle_camera()
+void update_angle_camera(struct Camera *camera)
 {
-    if (is_rotating)
+    if (camera->is_rotating)
     {
         if (current_rotation_frame >= total_rotation_frame)
         {
             // when rotation finishes
             current_rotation_frame = 0;
-            is_rotating = false;
+            camera->is_rotating = false;
         }
         else
         {
@@ -164,7 +161,7 @@ void update_target_camera(struct Camera *camera, const Vector3 target)
 void update_camera(struct Camera *camera, const Vector3 target)
 {
     update_target_camera(camera, target);
-    update_angle_camera();
+    update_angle_camera(camera);
     update_position_camera(camera, target);
 }
 
@@ -191,7 +188,7 @@ Vector3 raycast_camera(const struct Camera *camera, const Vector2 position)
     Ray ray = GetMouseRay(position, camera->view);
 
     // Check if ray is parallel to ground (no intersection)
-    if (fabs(ray.direction.y) < 0.001f)
+    if (fabsf(ray.direction.y) < 0.001f)
         return target;
 
     // Calculate intersection point, solve for y = 0
@@ -200,5 +197,6 @@ Vector3 raycast_camera(const struct Camera *camera, const Vector2 position)
     if (t < 0)
         return target;
 
-    return Vector3Add(ray.position, Vector3Scale(ray.direction, t));
+    target = Vector3Add(ray.position, Vector3Scale(ray.direction, t));
+    return target;
 }

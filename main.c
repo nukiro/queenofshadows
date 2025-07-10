@@ -83,13 +83,14 @@ int main(void)
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.fps.target);
 
-    struct Hero hero = create_hero((Vector2){.0f, .0f});
+    struct Hero hero = create_hero((Vector3){.0f, .0f, 0.f});
     // initialize camema by hero position
     struct Camera camera = create_camera(hero.position);
 
     while (!WindowShouldClose())
     {
-        float deltaTime = GetFrameTime();
+        // float _ = GetFrameTime();
+        // printf("%f %f\n", hero.position.x, hero.position.z);
 
         // Update
         if (game.debug)
