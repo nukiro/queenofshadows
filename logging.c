@@ -8,35 +8,41 @@
 #include <string.h>
 #include <time.h>
 
-struct Logger
-{
-    int level;
-};
-
-struct Logger *create_logger(int level)
+struct Logger create_logger(int level)
 {
     if (level < 0)
         die("level must be between 0 and 5");
     if (level > 5)
         die("level must be between 0 and 5");
 
-    struct Logger *l;
-
-    // dynamically allocate memory
-    l = (struct Logger *)malloc(sizeof(*l));
-    if (l != NULL)
-        l->level = level;
-
-    return l;
+    return (struct Logger){
+        .level = level};
 }
 
-void destroy_logger(struct Logger *l)
-{
-    if (l == NULL)
-        die("logger pointer must not be null");
+// struct Logger *create_logger(int level)
+// {
+//     if (level < 0)
+//         die("level must be between 0 and 5");
+//     if (level > 5)
+//         die("level must be between 0 and 5");
 
-    free(l);
-}
+//     struct Logger *l;
+
+//     // dynamically allocate memory
+//     l = (struct Logger *)malloc(sizeof(*l));
+//     if (l != NULL)
+//         l->level = level;
+
+//     return l;
+// }
+
+// void destroy_logger(struct Logger *l)
+// {
+//     if (l == NULL)
+//         die("logger pointer must not be null");
+
+//     free(l);
+// }
 
 int format(const char *level, const char *msg)
 {
@@ -76,8 +82,8 @@ int format(const char *level, const char *msg)
 
 bool check(const struct Logger *l, const int level)
 {
-    if (l == NULL)
-        die("logger pointer must not be null");
+    // if (l == NULL)
+    //     die("logger pointer must not be null");
 
     if (l->level > level)
         return false;

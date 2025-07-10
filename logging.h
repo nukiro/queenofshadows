@@ -7,8 +7,14 @@ struct Logger;
 #define FATAL 4
 #define OFF 5
 
-struct Logger *create_logger(int level);
-void destroy_logger(struct Logger *l);
+struct Logger
+{
+    int level;
+};
+
+struct Logger create_logger(int level);
+// struct Logger *create_logger(int level);
+// void destroy_logger(struct Logger *l);
 
 int debug(const struct Logger *l, const char *msg);
 int info(const struct Logger *l, const char *msg);
