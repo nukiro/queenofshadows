@@ -1,0 +1,62 @@
+name: New Release after a merge on Main
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to get commit history and tags
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Extract version from branch name
+        id: extract_version
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/release/}
+          TAG="v$BRANCH_NAME"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Get commit messages and update CHANGELOG.md
+        id: changelog
+        run: |
+          # Get today's date (in YYYY-MM-DD format)
+          DATE=$(date +'%Y-%m-%d')
+
+          # Get the latest tag (if any)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+          COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:'- %s')
+          else
+          COMMITS=$(git log HEAD --pretty=format:'- %s')
+          fi
+
+          # Append to CHANGELOG.md
+          echo "## $TAG - $DATE" >> CHANGELOG.md
+          echo "$COMMITS" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+
+      - name: Commit and push updated CHANGELOG.md
+        run: |
+          git add CHANGELOG.md
+          git commit -m "chore: update CHANGELOG.md for $TAG"
+          git push origin HEAD
+
+      - name: Push tag
+        run: |
+          git tag $TAG
+          git push origin $TAG
