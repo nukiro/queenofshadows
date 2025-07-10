@@ -65,13 +65,13 @@ void calculate_fps(struct FPS *p)
 
 bool double_click(bool *first_click, float *last_click_time)
 {
-    float currentTime = GetTime();
-    bool isDoubleClick = false;
+    float current_time = GetTime();
+    bool is_double_click = false;
 
     // Check for double-click
-    if (first_click && (currentTime - *last_click_time) <= DOUBLE_CLICK_TIME)
+    if (first_click && (current_time - *last_click_time) <= DOUBLE_CLICK_TIME)
     {
-        isDoubleClick = true;
+        is_double_click = true;
         *first_click = false;
     }
     else
@@ -79,14 +79,14 @@ bool double_click(bool *first_click, float *last_click_time)
         *first_click = true;
     }
 
-    *last_click_time = currentTime;
+    *last_click_time = current_time;
 
-    return isDoubleClick;
+    return is_double_click;
 }
 
 // Double-click detection variables
-static float lastClickTime = 0.0f;
-static bool firstClick = false;
+static float last_click_time = 0.0f;
+static bool first_click = false;
 
 int main(void)
 {
@@ -126,7 +126,7 @@ int main(void)
         // Action Input
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
             // From mouse position, generate a ray
-            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), double_click(&firstClick, &lastClickTime));
+            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), double_click(&first_click, &last_click_time));
 
         // Camera Input
         if (IsKeyDown(KEY_W))
