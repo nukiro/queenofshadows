@@ -63,17 +63,39 @@ void calculate_fps(struct FPS *p)
     p->previous_time = p->current_time;
 }
 
+bool double_click(bool *first_click, float *last_click_time)
+{
+    float currentTime = GetTime();
+    bool isDoubleClick = false;
+
+    // Check for double-click
+    if (first_click && (currentTime - *last_click_time) <= DOUBLE_CLICK_TIME)
+    {
+        isDoubleClick = true;
+        *first_click = false;
+    }
+    else
+    {
+        *first_click = true;
+    }
+
+    *last_click_time = currentTime;
+
+    return isDoubleClick;
+}
+
+// Double-click detection variables
+static float lastClickTime = 0.0f;
+static bool firstClick = false;
+
 int main(void)
 {
     /* Initialization */
-    // Double-click detection variables
-    static float lastClickTime = 0.0f;
-    static bool firstClick = false;
 
     // struct Player player = {"UUID_PLAYER", true};
     struct Game game =
         {
-            .version = "v0.0.1",
+            .version = "v0.1.0",
             .name = "Queen of Shadows",
             .window = {1920, 1080},
             .debug = true,
@@ -103,26 +125,8 @@ int main(void)
 
         // Action Input
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-        {
-            float currentTime = GetTime();
-            bool isDoubleClick = false;
-
-            // Check for double-click
-            if (firstClick && (currentTime - lastClickTime) <= DOUBLE_CLICK_TIME)
-            {
-                isDoubleClick = true;
-                firstClick = false;
-            }
-            else
-            {
-                firstClick = true;
-            }
-
-            lastClickTime = currentTime;
-
             // From mouse position, generate a ray
-            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), isDoubleClick);
-        }
+            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), double_click(&firstClick, &lastClickTime));
 
         // Camera Input
         if (IsKeyDown(KEY_W))

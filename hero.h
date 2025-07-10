@@ -6,6 +6,7 @@ struct Hero
 {
     Vector3 position;
     bool is_moving;
+    float speed;
 };
 
 struct Hero create_hero(const Vector3 at);
