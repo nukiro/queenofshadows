@@ -2,9 +2,6 @@ name: New Release after a merge on Main
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -47,6 +44,7 @@ jobs:
 
           # Append to CHANGELOG.md
           echo "## $TAG - $DATE" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
           echo "$COMMITS" >> CHANGELOG.md
           echo "" >> CHANGELOG.md
 
