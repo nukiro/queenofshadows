@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define DOUBLE_CLICK_TIME 0.5f
+
 struct Player
 {
     char id[50];
@@ -64,6 +66,9 @@ void calculate_fps(struct FPS *p)
 int main(void)
 {
     /* Initialization */
+    // Double-click detection variables
+    static float lastClickTime = 0.0f;
+    static bool firstClick = false;
 
     // struct Player player = {"UUID_PLAYER", true};
     struct Game game =
@@ -99,8 +104,24 @@ int main(void)
         // Action Input
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
+            float currentTime = GetTime();
+            bool isDoubleClick = false;
+
+            // Check for double-click
+            if (firstClick && (currentTime - lastClickTime) <= DOUBLE_CLICK_TIME)
+            {
+                isDoubleClick = true;
+                firstClick = false;
+            }
+            else
+            {
+                firstClick = true;
+            }
+
+            lastClickTime = currentTime;
+
             // From mouse position, generate a ray
-            move_hero(&hero, raycast_camera(&camera, GetMousePosition()));
+            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), isDoubleClick);
         }
 
         // Camera Input
