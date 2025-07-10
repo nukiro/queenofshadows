@@ -1,3 +1,4 @@
+#include "logging.h"
 #include "camera.h"
 #include "hero.h"
 
@@ -13,6 +14,11 @@ struct Player
     char id[50];
     bool traceable;
 };
+
+int trace(const struct Player *player)
+{
+    return player->traceable ? INFO : ERROR;
+}
 
 struct FPS
 {
@@ -92,7 +98,7 @@ int main(void)
 {
     /* Initialization */
 
-    // struct Player player = {"UUID_PLAYER", true};
+    struct Player player = {"UUID_PLAYER", true};
     struct Game game =
         {
             .version = "v0.1.0",
@@ -106,6 +112,9 @@ int main(void)
                 .update_draw_time = 0.0,
                 .wait_time = 0.0,
                 .delta_time = 0.0f}};
+
+    struct Logger logger = create_logger(game.debug ? DEBUG : trace(&player));
+    info(&logger, "Initializating Game...");
 
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.fps.target);
