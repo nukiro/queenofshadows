@@ -185,21 +185,20 @@ const char *position_camera(const struct Camera *camera)
     }
 }
 
-Vector2 raycast_camera(const struct Camera *camera, const Vector2 position)
+Vector3 raycast_camera(const struct Camera *camera, const Vector2 position)
 {
-    Vector2 target = {0};
+    Vector3 target = {0};
     Ray ray = GetMouseRay(position, camera->view);
 
-    // ground plane is at y = 0
-    if (ray.direction.y != 0)
-    {
-        float t = -ray.position.y / ray.direction.y; // solve for y = 0
-        if (t > 0)
-            // y = 0.0f = ground plane
-            target = (Vector2){
-                ray.position.x + ray.direction.x * t,
-                ray.position.z + ray.direction.z * t};
-    }
+    // Check if ray is parallel to ground (no intersection)
+    if (fabs(ray.direction.y) < 0.001f)
+        return target;
 
-    return target;
+    // Calculate intersection point, solve for y = 0
+    // float t = (groundY - ray.position.y) / ray.direction.y;
+    float t = -ray.position.y / ray.direction.y;
+    if (t < 0)
+        return target;
+
+    return Vector3Add(ray.position, Vector3Scale(ray.direction, t));
 }

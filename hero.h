@@ -9,4 +9,6 @@ struct Hero
 
 struct Hero create_hero(const Vector2 at);
 
-void update_hero(struct Hero *hero, const Vector2 target);
+void move_hero(struct Hero *hero, const Vector3 target);
+
+void update_hero(struct Hero *hero);

@@ -84,12 +84,13 @@ int main(void)
     SetTargetFPS(game.fps.target);
 
     struct Hero hero = create_hero((Vector2){.0f, .0f});
-    Vector3 targetPos = hero.position;
     // initialize camema by hero position
     struct Camera camera = create_camera(hero.position);
 
     while (!WindowShouldClose())
     {
+        float deltaTime = GetFrameTime();
+
         // Update
         if (game.debug)
             calculate_fps(&game.fps);
@@ -97,26 +98,9 @@ int main(void)
         // Action Input
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            // Get mouse position and generate a ray
-            Vector2 mousePos = GetMousePosition();
-            Ray ray = GetMouseRay(mousePos, camera.view);
-
-            // ground plane is at y = 0
-            if (ray.direction.y != 0)
-            {
-                float t = -ray.position.y / ray.direction.y; // solve for y = 0
-                if (t > 0)
-                    targetPos = (Vector3){
-                        ray.position.x + ray.direction.x * t,
-                        hero.position.y, // hero position at ground plane
-                        ray.position.z + ray.direction.z * t};
-            }
+            // From mouse position, generate a ray
+            move_hero(&hero, raycast_camera(&camera, GetMousePosition()));
         }
-
-        // Smoothly move character toward target
-        float speed = 0.05f; // Smoothing speed
-        hero.position = Vector3Lerp(hero.position, targetPos, speed);
-        camera.view.target = hero.position;
 
         // Camera Input
         if (IsKeyDown(KEY_W))
@@ -131,6 +115,7 @@ int main(void)
         if (IsKeyPressed(KEY_D))
             counter_clockwise_rotate_camera(&camera);
 
+        update_hero(&hero);
         update_camera(&camera, hero.position);
 
         // Drawing

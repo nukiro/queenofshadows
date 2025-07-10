@@ -31,6 +31,6 @@ void zoom_out_camera(struct Camera *camera);
 void clockwise_rotate_camera(struct Camera *camera);
 void counter_clockwise_rotate_camera(struct Camera *camera);
 
-Vector2 raycast_camera(const struct Camera *camera, const Vector2 position);
+Vector3 raycast_camera(const struct Camera *camera, const Vector2 position);
 
 void update_camera(struct Camera *camera, const Vector3 target);
