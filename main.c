@@ -1,9 +1,12 @@
 #include "camera.h"
+#include "hero.h"
 
 #include <raylib.h>
 #include <raymath.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#define DOUBLE_CLICK_TIME 0.5f
 
 struct Player
 {
@@ -60,10 +63,30 @@ void calculate_fps(struct FPS *p)
     p->previous_time = p->current_time;
 }
 
-struct Character
+bool double_click(bool *first_click, float *last_click_time)
 {
-    Vector3 position;
-};
+    float current_time = GetTime();
+    bool is_double_click = false;
+
+    // Check for double-click
+    if (first_click && (current_time - *last_click_time) <= DOUBLE_CLICK_TIME)
+    {
+        is_double_click = true;
+        *first_click = false;
+    }
+    else
+    {
+        *first_click = true;
+    }
+
+    *last_click_time = current_time;
+
+    return is_double_click;
+}
+
+// Double-click detection variables
+static float last_click_time = 0.0f;
+static bool first_click = false;
 
 int main(void)
 {
@@ -72,7 +95,7 @@ int main(void)
     // struct Player player = {"UUID_PLAYER", true};
     struct Game game =
         {
-            .version = "v0.0.1",
+            .version = "v0.1.0",
             .name = "Queen of Shadows",
             .window = {1920, 1080},
             .debug = true,
@@ -87,16 +110,25 @@ int main(void)
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.fps.target);
 
-    struct Character hero = {.position = {.0f, 1.0f, .0f}};
+    struct Hero hero = create_hero((Vector3){.0f, .0f, 0.f});
     // initialize camema by hero position
     struct Camera camera = create_camera(hero.position);
 
     while (!WindowShouldClose())
     {
+        // float _ = GetFrameTime();
+        // printf("%f %f\n", hero.position.x, hero.position.z);
+
         // Update
         if (game.debug)
             calculate_fps(&game.fps);
 
+        // Action Input
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+            // From mouse position, generate a ray
+            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), double_click(&first_click, &last_click_time));
+
+        // Camera Input
         if (IsKeyDown(KEY_W))
             zoom_in_camera(&camera);
 
@@ -109,6 +141,7 @@ int main(void)
         if (IsKeyPressed(KEY_D))
             counter_clockwise_rotate_camera(&camera);
 
+        update_hero(&hero);
         update_camera(&camera, hero.position);
 
         // Drawing
