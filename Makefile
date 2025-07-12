@@ -17,7 +17,7 @@ all: queen
 
 queen: $(OBJS)
 	@if [ "$(OS)" = "macos" ]; then \
-		$(CC) $(CFLAGS) -o $(@F) $(OBJS) -L/opt/homebrew/Cellar/raylib/5.5/lib -lraylib; \
+		$(CC) $(CFLAGS) -o $(@F) $(OBJS) -L/opt/homebrew/Cellar/raylib/5.5/lib -lraylib -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo; \
 	else \
 		@$(CC) $(CFLAGS) -o $(@F) $(OBJS) $(LIBS); \
 	fi
