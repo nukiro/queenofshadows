@@ -1,5 +1,22 @@
 # Project Setup
 
+## Ubuntu
+
+### `c_cpp_properties.json`
+
+```json
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "cStandard": "c23",
+      "defines": ["true=1", "false=0"]
+    }
+  ],
+  "version": 4
+}
+```
+
 ## MacOS
 
 Install `brew` and project dependencies.
@@ -16,4 +33,25 @@ Compile and run the program.
 ```shell
 make queen --OS=macos
 ./queen
+```
+
+### `c_cpp_properties.json`
+
+```json
+{
+  "configurations": [
+    {
+      "name": "Mac",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/opt/homebrew/opt/raylib/include"
+      ],
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c23",
+      "defines": ["true=1", "false=0"],
+      "intelliSenseMode": "macos-clang-arm64"
+    }
+  ],
+  "version": 4
+}
 ```

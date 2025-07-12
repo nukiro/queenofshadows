@@ -56,7 +56,8 @@ dkms.conf
 
 # VSCode
 .vscode/*
-!.vscode/c_cpp_properties.json
+!.vscode/c_cpp_properties_linux.json
+!.vscode/c_cpp_properties_mac.json
 
 # Game Executable
 queen
