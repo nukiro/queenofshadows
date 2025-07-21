@@ -21,6 +21,23 @@ struct Game create_game()
     };
 }
 
+const char *environment_game(const struct Game *game)
+{
+    switch (game->environment)
+    {
+    case PRODUCTION:
+        return "Game Environment: PRODUCTION";
+    default:
+        return "Game Environment: DEVELOPMENT";
+    }
+}
+
+// const char *window_game(const struct Game *game)
+const char *window_game()
+{
+    return "Window: 1920x1080";
+}
+
 bool setup_os(struct Game *game, const struct Logger *logger)
 {
 #if defined(_WIN32)
@@ -50,7 +67,8 @@ bool setup_screen(struct Game *game, const struct Logger *logger)
         game->window.width = DEV_SCREEN_WIDTH;
         game->window.heigth = DEV_SCREEN_HEIGHT;
     }
-    // debug(logger, )
+
+    debug(logger, window_game());
 
     return true;
 }
@@ -58,7 +76,7 @@ bool setup_screen(struct Game *game, const struct Logger *logger)
 bool setup_game(struct Game *game, const struct Logger *logger)
 {
     debug(logger, "Setting up Game...");
-    // debug(logger, game->environment);
+    debug(logger, environment_game(game));
 
     if (!setup_os(game, logger))
     {

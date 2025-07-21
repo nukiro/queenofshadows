@@ -62,6 +62,7 @@ int main(void)
     }
 
     info(&logger, "Running...");
+
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.target_fps);
 
@@ -112,7 +113,7 @@ int main(void)
         if (game.debug)
         {
             DrawText(TextFormat("%s %s", game.name, game.version), 10, 10, 10, GREEN);
-            DrawText(TextFormat("Camara: %s (%.0f)", position_camera(&camera), camera.angle), 10, 30, 10, GREEN);
+            DrawText(TextFormat("%s (%.0f)", position_camera(&camera), camera.angle), 10, 30, 10, GREEN);
             DrawText(TextFormat("Hero: %.2f %.2f", hero.position.x, hero.position.z), 10, 45, 10, GREEN);
         }
         EndDrawing();

@@ -31,4 +31,8 @@ struct Game
 
 struct Game create_game();
 
+const char *environment_game(const struct Game *game);
+// const char *window_game(const struct Game *game)
+const char *window_game();
+
 bool setup_game(struct Game *game, const struct Logger *logger);
