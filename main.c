@@ -101,7 +101,7 @@ int main(void)
     struct Player player = {"UUID_PLAYER", true};
     struct Game game =
         {
-            .version = "v0.1.0",
+            .version = "v0.1.1",
             .name = "Queen of Shadows",
             .window = {1920, 1080},
             .debug = true,
