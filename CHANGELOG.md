@@ -1,5 +1,10 @@
 # Project Releases
 
+## v0.1.1 - 2025-07-21
+
+- feat: detect os (#53)
+- doc: MacOS setup (#49)
+
 ## v0.1.0 - 2025-07-10
 
 - chore: create and update actions (#43)
@@ -14,4 +19,3 @@
 - chore: github action to protect merges without description
 - feat: Create a basic window
 - Initial Commit
-
