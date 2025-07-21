@@ -52,14 +52,16 @@ int main(void)
     struct Player player = {"UUID_PLAYER", true};
     struct Game game = create_game();
     struct Logger logger = create_logger(game.debug ? DEBUG : trace(&player));
+
     info(&logger, "Initializating...");
 
     // if setup fails return error
-    if (!setup_game(&logger))
+    if (!setup_game(&game, &logger))
     {
         return 0;
     }
 
+    info(&logger, "Running...");
     InitWindow(game.window.width, game.window.heigth, game.name);
     SetTargetFPS(game.target_fps);
 

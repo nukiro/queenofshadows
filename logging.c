@@ -96,7 +96,7 @@ int debug(const struct Logger *l, const char *msg)
     if (!check(l, DEBUG))
         return 0;
 
-    return format("DEBUG", msg);
+    return format("\x1b[4mDEBUG\x1b[0m", msg);
 }
 
 int info(const struct Logger *l, const char *msg)

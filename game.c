@@ -1,45 +1,74 @@
 #include "game.h"
 #include "logging.h"
 
-#include <X11/Xlib.h>
 #include <stdio.h>
 
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
+#define MIN_SCREEN_WIDTH 1280
+#define MIN_SCREEN_HEIGHT 720
+
+#define DEV_SCREEN_WIDTH 1920
+#define DEV_SCREEN_HEIGHT 1080
 
 struct Game create_game()
 {
     return (struct Game){
         .version = "v0.1.1",
         .name = "Queen of Shadows",
-        .window = {SCREEN_WIDTH, SCREEN_HEIGHT},
+        .window = {MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT},
         .debug = true,
         .environment = DEVELOPMENT,
         .target_fps = 60,
     };
 }
 
-bool setup_os(const struct Logger *logger)
+bool setup_os(struct Game *game, const struct Logger *logger)
 {
 #if defined(_WIN32)
-    info(logger, "OS: Windows");
+    debug(logger, "OS: Windows");
+    game->os = WINDOWS;
 #elif defined(__APPLE__) && defined(__MACH__)
-    info(logger, "OS: MacOS");
+    debug(logger, "OS: MacOS");
+    game->os = MACOS;
 #elif defined(__linux__)
-    info(logger, "OS: Linux");
+    debug(logger, "OS: Linux");
+    game->os = LINUX;
 #elif defined(__inux__)
-    info(logger, "OS: Unix");
+    debug(logger, "OS: Unix");
+    game->os = UNIX;
 #endif
 
     return true;
 }
 
-bool setup_game(const struct Logger *logger)
+bool setup_screen(struct Game *game, const struct Logger *logger)
 {
-    info(logger, "Setting up Game...");
-    if (!setup_os(logger))
+    // TODO: #46 using raylib or os libs?
+    // check if screen has minimum size
+
+    if (game->environment == DEVELOPMENT)
+    {
+        game->window.width = DEV_SCREEN_WIDTH;
+        game->window.heigth = DEV_SCREEN_HEIGHT;
+    }
+    // debug(logger, )
+
+    return true;
+}
+
+bool setup_game(struct Game *game, const struct Logger *logger)
+{
+    debug(logger, "Setting up Game...");
+    // debug(logger, game->environment);
+
+    if (!setup_os(game, logger))
     {
         error(logger, "error setting up game: OS");
+        return false;
+    }
+
+    if (!setup_screen(game, logger))
+    {
+        error(logger, "error setting up game: Screen");
         return false;
     }
 
