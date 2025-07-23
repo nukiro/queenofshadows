@@ -103,6 +103,14 @@ int main(void)
 
         BeginMode3D(camera.view);
 
+        if (game.debug)
+        {
+            // Draw coordinate axes for reference
+            DrawLine3D((Vector3){0, 0, 0}, (Vector3){5, 0, 0}, RED);   // X axis
+            DrawLine3D((Vector3){0, 0, 0}, (Vector3){0, 5, 0}, GREEN); // Y axis
+            DrawLine3D((Vector3){0, 0, 0}, (Vector3){0, 0, 5}, BLUE);  // Z axis
+        }
+
         DrawCube(hero.position, 0.5f, 2.0f, 0.5f, RED);
         DrawCubeWires(hero.position, 0.5f, 2.0f, 0.5f, BLUE);
 

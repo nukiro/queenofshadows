@@ -128,8 +128,8 @@ void counter_clockwise_rotate_camera(struct Camera *camera)
 
 void update_position_camera(struct Camera *camera, const Vector3 target)
 {
-    camera->view.position.y = camera->radius;
     camera->view.position.x = target.x + camera->radius * sin(current_rotation_angle * DEG2RAD);
+    camera->view.position.y = camera->radius;
     camera->view.position.z = target.z + camera->radius * cos(current_rotation_angle * DEG2RAD);
 }
 
