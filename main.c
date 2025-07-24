@@ -271,10 +271,19 @@ int main(void)
                 if (FindPath(hx, hy, vx, vy,
                              pathX, pathY, &pathLength))
                 {
-                    printf("path found");
+                    printf("---\n");
+                    printf("path found: %d\n", pathLength);
+                    for (int i = 0; i < pathLength; i++)
+                    {
+                        Vector3 v = GridToWorld(pathX[i], pathY[i]);
+                        printf("path = x: %f, y: %f, z: %f\n", v.x, v.y, v.z);
+                    }
+                    printf("---\n");
                 }
-                move_hero(&hero, ray, double_click(&first_click, &last_click_time));
             }
+
+            find_path(&world, hero.position, ray);
+            move_hero(&hero, ray, double_click(&first_click, &last_click_time));
         }
 
         // Camera Input

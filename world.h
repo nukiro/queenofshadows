@@ -2,7 +2,8 @@
 
 #include <raylib.h>
 
-struct World {
+struct World
+{
     // Walkable grid (1 = walkable, 0 = blocked)
     int grid[11][11];
 };
