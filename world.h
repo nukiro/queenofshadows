@@ -7,12 +7,10 @@ struct World {
     int grid[11][11];
 };
 
-struct Path {
-    Vector3 nodes[11*11];
-    int length;
-    int index;
-};
-
 struct World create_world();
 void world_init(struct World *world);
-struct Path find_path(struct World *world, const Vector3 start, const Vector3 end);
+void world_to_grid(Vector3 worldPos, int *gridX, int *gridY);
+Vector3 grid_to_world(int gridX, int gridY);
+bool is_walkable(struct World *world, int x, int y);
+int grid_size();
+int tile_size();
