@@ -113,7 +113,7 @@ Vector3 GridToWorld(int gridX, int gridY)
 // Check if grid position is valid and walkable
 bool IsWalkable(int x, int y)
 {
-    if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE)
+    if (x < 0 || x > 10 || y < 0 || y > 10)
         return false;
     return walkableGrid[x][y] == 1;
 }
@@ -175,7 +175,10 @@ int main(void)
             Vector3 pos = GridToWorld(targetGridX, targetGridY);
             printf("to move hero = x: %f, y: %f, z: %f\n", pos.x, pos.y, pos.z);
 
-            move_hero(&hero, pos, double_click(&first_click, &last_click_time));
+            if (IsWalkable(vx, vy))
+            {
+                move_hero(&hero, pos, double_click(&first_click, &last_click_time));
+            }
         }
 
         // Camera Input
@@ -220,14 +223,15 @@ int main(void)
                 if (walkableGrid[vx][vy] == 0)
                 {
                     tileColor = RED; // Blocked tile
+                    DrawCube(position, (TILE_SIZE / 2) * 0.95f, 0.0f, (TILE_SIZE / 2) * 0.95f, tileColor);
+                    DrawCubeWires(position, (TILE_SIZE / 2), 0.0f, (TILE_SIZE / 2), LIGHTGRAY);
                 }
                 else
                 {
                     tileColor = ((x + z) % 2 == 0) ? (Color){100, 100, 100, 200} : (Color){120, 120, 120, 200};
+                    DrawCube(position, TILE_SIZE * 0.95f, 0.0f, TILE_SIZE * 0.95f, tileColor);
+                    DrawCubeWires(position, TILE_SIZE, 0.0f, TILE_SIZE, LIGHTGRAY);
                 }
-
-                DrawCube(position, TILE_SIZE * 0.95f, 0.0f, TILE_SIZE * 0.95f, tileColor);
-                DrawCubeWires(position, TILE_SIZE, 0.0f, TILE_SIZE, LIGHTGRAY);
             }
         }
 
