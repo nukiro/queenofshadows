@@ -59,7 +59,10 @@ dkms.conf
 
 # Game Executable
 queen
+
+# Playground and Test executables
 main
+
 
 # Zig
 .zig-cache/
