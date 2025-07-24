@@ -1,7 +1,12 @@
 #include "raylib.h"
 #include "raymath.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Screen settings
+#define SCREEN_WIDTH 1980
+#define SCREEN_HEIGHT 1080
 
 // Grid settings
 #define GRID_SIZE 20
@@ -173,27 +178,19 @@ bool FindPath(int startX, int startY, int endX, int endY, int *pathX, int *pathY
 
 int main(void)
 {
-    const int screenWidth = 1200;
-    const int screenHeight = 800;
-
-    InitWindow(screenWidth, screenHeight, "Isometric Grid with Character Movement - Raylib");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Isometric Grid (3D Camera)");
 
     // Initialize walkable grid
     InitWalkableGrid();
 
     // Create 3D camera
+    // Isometric view
     Camera3D camera = {0};
-    camera.position = (Vector3){30.0f, 30.0f, 30.0f};
+    camera.position = (Vector3){50.0f, 50.0f, 50.0f};
     camera.target = (Vector3){0.0f, 0.0f, 0.0f};
     camera.up = (Vector3){0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
-
-    // Camera control variables
-    float cameraDistance = 35.0f;
-    float cameraAngle = 45.0f;
-    float cameraHeight = 25.0f;
-    Vector3 gridCenter = {GRID_SIZE / 2.0f, 0.0f, GRID_SIZE / 2.0f};
 
     // Initialize character
     Character character = {0};
@@ -218,43 +215,17 @@ int main(void)
     {
         float deltaTime = GetFrameTime();
 
-        // Camera controls
-        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
-            cameraAngle -= 60.0f * deltaTime;
-        if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
-            cameraAngle += 60.0f * deltaTime;
-        if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
-            cameraHeight += 10.0f * deltaTime;
-        if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
-            cameraHeight -= 10.0f * deltaTime;
-
-        // Zoom controls
-        float wheel = GetMouseWheelMove();
-        if (wheel != 0)
-        {
-            cameraDistance -= wheel * 2.0f;
-            if (cameraDistance < 10.0f)
-                cameraDistance = 10.0f;
-            if (cameraDistance > 100.0f)
-                cameraDistance = 100.0f;
-        }
-
-        // Update camera position
-        float radians = cameraAngle * DEG2RAD;
-        camera.position.x = gridCenter.x + cos(radians) * cameraDistance;
-        camera.position.z = gridCenter.z + sin(radians) * cameraDistance;
-        camera.position.y = fmaxf(5.0f, fminf(50.0f, cameraHeight));
-        camera.target = gridCenter;
-
         // Handle mouse click for movement
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
             Vector3 mouseWorldPos = GetMouseWorldPosition(camera);
+            printf("mouse = x: %f, y: %f, z: %f\n", mouseWorldPos.x, mouseWorldPos.y, mouseWorldPos.z);
 
             if (mouseWorldPos.x >= 0)
             { // Valid world position
                 int targetGridX, targetGridY;
                 WorldToGrid(mouseWorldPos, &targetGridX, &targetGridY);
+                printf("grid = x: %d, y = %d\n", targetGridX, targetGridY);
 
                 // Find path to clicked position
                 if (FindPath(character.gridX, character.gridY, targetGridX, targetGridY,
@@ -265,6 +236,7 @@ int main(void)
                     character.targetGridX = pathX[0];
                     character.targetGridY = pathY[0];
                     character.targetPosition = GridToWorld(character.targetGridX, character.targetGridY);
+                    printf("target = x: %f, y: %f, z: %f\n", character.targetPosition.x, character.targetPosition.y, character.targetPosition.z);
                 }
             }
         }

@@ -170,13 +170,13 @@ const char *position_camera(const struct Camera *camera)
     switch (camera->position)
     {
     case POSITION_SOUTH:
-        return "South facing North";
+        return "In the south facing north";
     case POSITION_WEST:
-        return "West facing East";
+        return "In the west facing east";
     case POSITION_NORTH:
-        return "North facing South";
+        return "In the north facing south";
     case POSITION_EAST:
-        return "East facing West";
+        return "In the east facing west";
     default:
         return "Unknown";
     }
