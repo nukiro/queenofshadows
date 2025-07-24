@@ -70,12 +70,14 @@ void InitWalkableGrid()
     walkableGrid[0][1] = 0;
     walkableGrid[1][0] = 0;
 
+    walkableGrid[4][3] = 0;
+
     walkableGrid[7][8] = 0;
-    walkableGrid[11][8] = 0;
+    walkableGrid[10][8] = 0;
 }
 
 // Convert world position to grid coordinates
-void WorldToGrid(Vector3 worldPos, int *gridX, int *gridY)
+void NormalizeWorldToGrid(Vector3 worldPos, int *gridX, int *gridY)
 {
     if (worldPos.x >= 0)
     {
@@ -94,6 +96,12 @@ void WorldToGrid(Vector3 worldPos, int *gridX, int *gridY)
     {
         *gridY = (int)(worldPos.z / TILE_SIZE - 0.5f);
     }
+}
+
+void WorldToGrid(int *x, int *y, const int tx, const int ty)
+{
+    *x = tx + 5;
+    *y = ty + 5;
 }
 
 // Convert grid coordinates to world position
@@ -157,8 +165,12 @@ int main(void)
             // printf("vs mouse = x: %f, y: %f, z: %f\n", mouseWorldPos.x, mouseWorldPos.y, mouseWorldPos.z);
 
             int targetGridX, targetGridY;
-            WorldToGrid(ray, &targetGridX, &targetGridY);
-            printf("grid = x: %d, y = %d\n", targetGridX, targetGridY);
+            NormalizeWorldToGrid(ray, &targetGridX, &targetGridY);
+            printf("normalize grid = x: %d, y = %d\n", targetGridX, targetGridY);
+
+            int vx, vy;
+            WorldToGrid(&vx, &vy, targetGridX, targetGridY);
+            printf("walkable grid = x: %d, y = %d\n", vx, vy);
 
             Vector3 pos = GridToWorld(targetGridX, targetGridY);
             printf("to move hero = x: %f, y: %f, z: %f\n", pos.x, pos.y, pos.z);
@@ -200,7 +212,19 @@ int main(void)
             for (int z = -1 * GRID_SIZE; z < GRID_SIZE + 1; z++)
             {
                 Vector3 position = {x * TILE_SIZE, 0.0f, z * TILE_SIZE};
-                Color tileColor = ((x + z) % 2 == 0) ? (Color){100, 100, 100, 200} : (Color){120, 120, 120, 200};
+                Color tileColor;
+
+                int vx, vy;
+                WorldToGrid(&vx, &vy, x, z);
+
+                if (walkableGrid[vx][vy] == 0)
+                {
+                    tileColor = RED; // Blocked tile
+                }
+                else
+                {
+                    tileColor = ((x + z) % 2 == 0) ? (Color){100, 100, 100, 200} : (Color){120, 120, 120, 200};
+                }
 
                 DrawCube(position, TILE_SIZE * 0.95f, 0.0f, TILE_SIZE * 0.95f, tileColor);
                 DrawCubeWires(position, TILE_SIZE, 0.0f, TILE_SIZE, LIGHTGRAY);
