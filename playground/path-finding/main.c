@@ -90,7 +90,7 @@ Vector3 GetMouseWorldPosition(Camera3D camera)
 }
 
 // Convert world position to grid coordinates
-void WorldToGrid(Vector3 worldPos, int *gridX, int *gridY)
+void NormalizeWorldToGrid(Vector3 worldPos, int *gridX, int *gridY)
 {
     *gridX = (int)(worldPos.x / TILE_SIZE + 0.5f);
     *gridY = (int)(worldPos.z / TILE_SIZE + 0.5f);
@@ -224,7 +224,7 @@ int main(void)
             if (mouseWorldPos.x >= 0)
             { // Valid world position
                 int targetGridX, targetGridY;
-                WorldToGrid(mouseWorldPos, &targetGridX, &targetGridY);
+                NormalizeWorldToGrid(mouseWorldPos, &targetGridX, &targetGridY);
                 printf("grid = x: %d, y = %d\n", targetGridX, targetGridY);
 
                 // Find path to clicked position
@@ -323,7 +323,7 @@ int main(void)
         if (mouseWorldPos.x >= 0)
         {
             int hoverGridX, hoverGridY;
-            WorldToGrid(mouseWorldPos, &hoverGridX, &hoverGridY);
+            NormalizeWorldToGrid(mouseWorldPos, &hoverGridX, &hoverGridY);
 
             if (IsWalkable(hoverGridX, hoverGridY))
             {
