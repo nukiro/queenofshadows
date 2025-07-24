@@ -61,4 +61,4 @@ dkms.conf
 queen
 
 # Playground Executables
-main
+**/main

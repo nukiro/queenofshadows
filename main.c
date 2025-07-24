@@ -10,6 +10,13 @@
 
 #define DOUBLE_CLICK_TIME 0.5f
 
+// Grid settings
+#define GRID_SIZE 5
+#define TILE_SIZE 1.0f
+
+// Walkable grid (1 = walkable, 0 = blocked)
+int walkableGrid[11][11];
+
 struct Player
 {
     char id[50];
@@ -46,6 +53,62 @@ bool double_click(bool *first_click, float *last_click_time)
 static float last_click_time = 0.0f;
 static bool first_click = false;
 
+// Initialize walkable grid with some obstacles
+void InitWalkableGrid()
+{
+    // Make everything walkable first
+    for (int x = 0; x < 11; x++)
+    {
+        for (int y = 0; y < 11; y++)
+        {
+            walkableGrid[x][y] = 1;
+        }
+    }
+
+    walkableGrid[0][0] = 0;
+    walkableGrid[0][1] = 0;
+    walkableGrid[1][0] = 0;
+
+    walkableGrid[7][8] = 0;
+    walkableGrid[11][8] = 0;
+}
+
+// Convert world position to grid coordinates
+void WorldToGrid(Vector3 worldPos, int *gridX, int *gridY)
+{
+    if (worldPos.x >= 0)
+    {
+        *gridX = (int)(worldPos.x / TILE_SIZE + 0.5f);
+    }
+    if (worldPos.z >= 0)
+    {
+        *gridY = (int)(worldPos.z / TILE_SIZE + 0.5f);
+    }
+
+    if (worldPos.x < 0)
+    {
+        *gridX = (int)(worldPos.x / TILE_SIZE - 0.5f);
+    }
+    if (worldPos.z < 0)
+    {
+        *gridY = (int)(worldPos.z / TILE_SIZE - 0.5f);
+    }
+}
+
+// Convert grid coordinates to world position
+Vector3 GridToWorld(int gridX, int gridY)
+{
+    return (Vector3){gridX * TILE_SIZE, 0, gridY * TILE_SIZE};
+}
+
+// Check if grid position is valid and walkable
+bool IsWalkable(int x, int y)
+{
+    if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE)
+        return false;
+    return walkableGrid[x][y] == 1;
+}
+
 int main(void)
 {
     /* Initialization */
@@ -64,6 +127,10 @@ int main(void)
     info(&logger, "Running...");
 
     InitWindow(game.window.width, game.window.heigth, game.name);
+
+    // Initialize walkable grid
+    InitWalkableGrid();
+
     SetTargetFPS(game.target_fps);
 
     struct Hero hero = create_hero((Vector3){.0f, .0f, 0.f});
@@ -77,8 +144,23 @@ int main(void)
 
         // Action Input
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
             // From mouse position, generate a ray
-            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), double_click(&first_click, &last_click_time));
+            Vector3 ray = raycast_camera(&camera, GetMousePosition());
+            printf("our mouse = x: %f, y: %f, z: %f\n", ray.x, ray.y, ray.z);
+
+            // Vector3 mouseWorldPos = GetMouseWorldPosition(camera.view);
+            // printf("vs mouse = x: %f, y: %f, z: %f\n", mouseWorldPos.x, mouseWorldPos.y, mouseWorldPos.z);
+
+            int targetGridX, targetGridY;
+            WorldToGrid(ray, &targetGridX, &targetGridY);
+            printf("grid = x: %d, y = %d\n", targetGridX, targetGridY);
+
+            Vector3 pos = GridToWorld(targetGridX, targetGridY);
+            printf("to move hero = x: %f, y: %f, z: %f\n", pos.x, pos.y, pos.z);
+
+            move_hero(&hero, pos, double_click(&first_click, &last_click_time));
+        }
 
         // Camera Input
         if (IsKeyDown(KEY_W))
@@ -106,7 +188,20 @@ int main(void)
         DrawCube(hero.position, 0.5f, 2.0f, 0.5f, RED);
         DrawCubeWires(hero.position, 0.5f, 2.0f, 0.5f, BLUE);
 
-        DrawGrid(100, 0.25f);
+        DrawGrid(22, 0.5f);
+
+        // Draw 3D walkable grid
+        for (int x = -1 * GRID_SIZE; x < GRID_SIZE + 1; x++)
+        {
+            for (int z = -1 * GRID_SIZE; z < GRID_SIZE + 1; z++)
+            {
+                Vector3 position = {x * TILE_SIZE, 0.0f, z * TILE_SIZE};
+                Color tileColor = ((x + z) % 2 == 0) ? (Color){100, 100, 100, 200} : (Color){120, 120, 120, 200};
+
+                DrawCube(position, TILE_SIZE * 0.95f, 0.0f, TILE_SIZE * 0.95f, tileColor);
+                DrawCubeWires(position, TILE_SIZE, 0.0f, TILE_SIZE, LIGHTGRAY);
+            }
+        }
 
         EndMode3D();
 
