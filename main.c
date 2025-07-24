@@ -73,6 +73,10 @@ void InitWalkableGrid()
     walkableGrid[4][3] = 0;
 
     walkableGrid[7][8] = 0;
+    walkableGrid[8][8] = 0;
+    walkableGrid[8][9] = 0;
+    walkableGrid[8][10] = 0;
+
     walkableGrid[10][8] = 0;
 }
 
@@ -107,7 +111,8 @@ void WorldToGrid(int *x, int *y, const int tx, const int ty)
 // Convert grid coordinates to world position
 Vector3 GridToWorld(int gridX, int gridY)
 {
-    return (Vector3){gridX * TILE_SIZE, 0, gridY * TILE_SIZE};
+    return (Vector3){(gridX * TILE_SIZE) - 5, 0, (gridY * TILE_SIZE) - 5};
+    // return (Vector3){gridX * TILE_SIZE, 0, gridY * TILE_SIZE};
 }
 
 // Check if grid position is valid and walkable
@@ -116,6 +121,87 @@ bool IsWalkable(int x, int y)
     if (x < 0 || x > 10 || y < 0 || y > 10)
         return false;
     return walkableGrid[x][y] == 1;
+}
+
+// Simple pathfinding queue for BFS
+typedef struct
+{
+    int x, y;
+    int parent;
+} PathNode;
+
+// Simple pathfinding using BFS
+bool FindPath(int startX, int startY, int endX, int endY, int *pathX, int *pathY, int *pathLength)
+{
+    if (!IsWalkable(endX, endY))
+        return false;
+    if (startX == endX && startY == endY)
+        return false;
+
+    PathNode queue[11 * 11];
+    bool visited[11][11] = {false};
+    int queueStart = 0, queueEnd = 0;
+
+    // Add starting position
+    queue[queueEnd] = (PathNode){startX, startY, -1};
+    visited[startX][startY] = true;
+    queueEnd++;
+
+    // Directions: up, down, left, right
+    int dx[] = {0, 0, -1, 1};
+    int dy[] = {-1, 1, 0, 0};
+
+    while (queueStart < queueEnd)
+    {
+        PathNode current = queue[queueStart];
+        queueStart++;
+
+        // Found target
+        if (current.x == endX && current.y == endY)
+        {
+            // Reconstruct path
+            int pathIndex = 0;
+            int nodeIndex = queueStart - 1;
+
+            // Build path backwards
+            int tempPathX[11 * 11];
+            int tempPathY[11 * 11];
+
+            while (nodeIndex != -1)
+            {
+                tempPathX[pathIndex] = queue[nodeIndex].x;
+                tempPathY[pathIndex] = queue[nodeIndex].y;
+                pathIndex++;
+                nodeIndex = queue[nodeIndex].parent;
+            }
+
+            // Reverse path (skip start position)
+            *pathLength = pathIndex - 1;
+            for (int i = 0; i < *pathLength; i++)
+            {
+                pathX[i] = tempPathX[*pathLength - 1 - i];
+                pathY[i] = tempPathY[*pathLength - 1 - i];
+            }
+
+            return true;
+        }
+
+        // Check all 4 directions
+        for (int i = 0; i < 4; i++)
+        {
+            int newX = current.x + dx[i];
+            int newY = current.y + dy[i];
+
+            if (IsWalkable(newX, newY) && !visited[newX][newY])
+            {
+                visited[newX][newY] = true;
+                queue[queueEnd] = (PathNode){newX, newY, queueStart - 1};
+                queueEnd++;
+            }
+        }
+    }
+
+    return false; // No path found
 }
 
 int main(void)
@@ -177,7 +263,17 @@ int main(void)
 
             if (IsWalkable(vx, vy))
             {
-                move_hero(&hero, pos, double_click(&first_click, &last_click_time));
+                // Find path to clicked position
+                int hx, hy;
+                int phx, phy;
+                NormalizeWorldToGrid(hero.position, &phx, &phy);
+                WorldToGrid(&hx, &hy, phx, phy);
+                if (FindPath(hx, hy, vx, vy,
+                             pathX, pathY, &pathLength))
+                {
+                    printf("path found");
+                }
+                move_hero(&hero, ray, double_click(&first_click, &last_click_time));
             }
         }
 
@@ -233,6 +329,15 @@ int main(void)
                     DrawCubeWires(position, TILE_SIZE, 0.0f, TILE_SIZE, LIGHTGRAY);
                 }
             }
+        }
+
+        // Draw path
+        for (int i = 0; i < pathLength; i++)
+        {
+            Vector3 pathPos = GridToWorld(pathX[i], pathY[i]);
+            pathPos.y = 0.1f;
+            // Color pathColor = (i <= currentPathIndex) ? GREEN : YELLOW;
+            DrawCube(pathPos, 0.3f, 0.2f, 0.3f, YELLOW);
         }
 
         EndMode3D();
