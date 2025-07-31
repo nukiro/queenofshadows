@@ -67,3 +67,6 @@ bar
 *.o
 *.exe
 .DS_Store
+
+# Coding Tests
+.tests/
