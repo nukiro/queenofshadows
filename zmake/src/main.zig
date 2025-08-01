@@ -4,15 +4,16 @@ const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 
 const Config = struct {
-    folder: ?[]const u8 = null,
+    project: ?[]const u8 = null,
+    source: ?[]const u8 = null,
     output: ?[]const u8 = null,
-    debug: bool = false,
-    verbose: bool = false,
-    compiler: []const u8 = "gcc",
-    run_after_build: bool = true,
+    debug: bool = true,
+    verbose: bool = true,
+    run: bool = true,
 
     fn deinit(self: *Config, allocator: Allocator) void {
-        if (self.folder) |f| allocator.free(f);
+        if (self.project) |f| allocator.free(f);
+        if (self.source) |s| allocator.free(s);
         if (self.output) |o| allocator.free(o);
     }
 };
@@ -29,91 +30,68 @@ fn printUsage() void {
     print("Usage: zmake [OPTIONS]\n\n", .{});
     print("Options:\n", .{});
     print("  --folder <path>     Specify the project folder (required)\n", .{});
-    print("  -o <key>=<value>    Set build options (debug=true/false, output=name)\n", .{});
-    print("  --compiler <name>   Specify compiler (default: gcc)\n", .{});
-    print("  --no-run           Don't run the program after building\n", .{});
-    print("  --verbose          Enable verbose output\n", .{});
-    print("  --help             Show this help message\n\n", .{});
-    print("Examples:\n", .{});
-    print("  zmake --folder playground/camera -o debug=true\n", .{});
-    print("  zmake --folder myproject -o output=myapp -o debug=false\n", .{});
-    print("  zmake --folder src --compiler clang --verbose\n", .{});
+    print("  --no-debug          Don't set debug\n", .{});
+    print("  --no-run            Don't run the program after building\n", .{});
+    print("  --no-verbose        Don't enable verbose output\n", .{});
+    print("  --help              Show this help message\n\n", .{});
 }
 
 fn parseArgs(allocator: Allocator) !Config {
     var args = std.process.args();
-    _ = args.skip(); // Skip program name
 
     var config = Config{};
 
+    _ = args.skip(); // Skip program name
     while (args.next()) |arg| {
+        // option: help
         if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
             printUsage();
             std.process.exit(0);
-        } else if (std.mem.eql(u8, arg, "--folder")) {
+        }
+
+        if (std.mem.eql(u8, arg, "--folder")) {
             if (args.next()) |folder| {
-                config.folder = try allocator.dupe(u8, folder);
+                config.project = try allocator.dupe(u8, folder);
+                // find source folder into the project folder
+                const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
+                defer allocator.free(source);
+                config.source = try allocator.dupe(u8, source);
             } else {
                 print("Error: --folder requires a path argument\n", .{});
                 return error.InvalidArgument;
             }
-        } else if (std.mem.eql(u8, arg, "--compiler")) {
-            if (args.next()) |compiler| {
-                config.compiler = compiler;
+        }
+
+        if (std.mem.eql(u8, arg, "--output")) {
+            if (args.next()) |output| {
+                config.output = try allocator.dupe(u8, output);
             } else {
-                print("Error: --compiler requires a compiler name\n", .{});
+                print("Error: --output requires a path argument\n", .{});
                 return error.InvalidArgument;
             }
-        } else if (std.mem.eql(u8, arg, "--no-run")) {
-            config.run_after_build = false;
-        } else if (std.mem.eql(u8, arg, "--verbose")) {
-            config.verbose = true;
-        } else if (std.mem.eql(u8, arg, "-o")) {
-            if (args.next()) |option| {
-                try parseOption(&config, allocator, option);
-            } else {
-                print("Error: -o requires a key=value argument\n", .{});
-                return error.InvalidArgument;
-            }
-        } else {
-            print("Error: Unknown argument '{s}'\n", .{arg});
-            print("Use --help for usage information\n", .{});
-            return error.InvalidArgument;
+        }
+
+        if (std.mem.eql(u8, arg, "--no-debug")) {
+            config.verbose = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--no-run")) {
+            config.run = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--no-verbose")) {
+            config.verbose = false;
         }
     }
 
-    if (config.folder == null) {
+    // check if folder option which is required, exists
+    if (config.project == null) {
         print("Error: --folder is required\n", .{});
         print("Use --help for usage information\n", .{});
         return error.InvalidArgument;
     }
 
     return config;
-}
-
-fn parseOption(config: *Config, allocator: Allocator, option: []const u8) !void {
-    if (std.mem.indexOf(u8, option, "=")) |eq_pos| {
-        const key = option[0..eq_pos];
-        const value = option[eq_pos + 1 ..];
-
-        if (std.mem.eql(u8, key, "debug")) {
-            if (std.mem.eql(u8, value, "true")) {
-                config.debug = true;
-            } else if (std.mem.eql(u8, value, "false")) {
-                config.debug = false;
-            } else {
-                print("Error: debug option must be 'true' or 'false'\n", .{});
-                return error.InvalidArgument;
-            }
-        } else if (std.mem.eql(u8, key, "output")) {
-            config.output = try allocator.dupe(u8, value);
-        } else {
-            print("Warning: Unknown option '{s}'\n", .{key});
-        }
-    } else {
-        print("Error: Option must be in key=value format\n", .{});
-        return error.InvalidArgument;
-    }
 }
 
 fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const u8) {
@@ -132,6 +110,7 @@ fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const 
     while (try iterator.next()) |entry| {
         if (entry.kind == .file) {
             const name = entry.name;
+            // get only c files
             if (std.mem.endsWith(u8, name, ".c")) {
                 const full_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ folder, name });
                 try source_files.append(full_path);
@@ -152,16 +131,13 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
     defer cmd_args.deinit();
 
     // Add compiler
-    try cmd_args.append(config.compiler);
+    try cmd_args.append("gcc");
 
-    // Add debug flags
-    if (config.debug) {
-        try cmd_args.append("-g");
-        try cmd_args.append("-DDEBUG");
-    } else {
-        try cmd_args.append("-O2");
-        try cmd_args.append("-DNDEBUG");
-    }
+    // Add flags
+    try cmd_args.append("-Wall");
+    try cmd_args.append("-Wextra");
+    try cmd_args.append("-pedantic");
+    try cmd_args.append("-std=c23");
 
     // Add source files
     for (source_files.items) |file| {
@@ -172,10 +148,6 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
     const output_name = config.output orelse "main";
     try cmd_args.append("-o");
     try cmd_args.append(output_name);
-
-    // Add common flags
-    try cmd_args.append("-Wall");
-    try cmd_args.append("-Wextra");
 
     if (config.verbose) {
         print("Building with command: ", .{});
@@ -253,12 +225,14 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    // firstly, parse command arguments and check which are required
     var config = parseArgs(allocator) catch {
         std.process.exit(1);
     };
     defer config.deinit(allocator);
 
-    const source_files = findSourceFiles(allocator, config.folder.?) catch {
+    // secondly, find c and h files into the source project folder
+    const source_files = findSourceFiles(allocator, config.source.?) catch {
         std.process.exit(1);
     };
     defer {
@@ -267,7 +241,6 @@ pub fn main() !void {
         }
         source_files.deinit();
     }
-
     if (config.verbose) {
         print("Found {d} source files:\n", .{source_files.items.len});
         for (source_files.items) |file| {
@@ -275,11 +248,13 @@ pub fn main() !void {
         }
     }
 
+    // thirdly, build the project
     const exe_name = buildProject(allocator, &config, source_files) catch {
         std.process.exit(1);
     };
     defer allocator.free(exe_name);
 
+    // fourthly, run the project
     if (config.run_after_build) {
         runExecutable(allocator, exe_name, config.verbose) catch {
             std.process.exit(1);

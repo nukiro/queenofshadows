@@ -59,6 +59,7 @@ dkms.conf
 
 # Game Executable
 queen
+main
 
 # Zig
 .zig-cache/
