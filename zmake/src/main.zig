@@ -224,8 +224,10 @@ fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: Ar
 
     // Add output
     const output_name = config.output orelse "main";
+    const project_folder = config.project.?;
+    const exe_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ project_folder, output_name });
     try cmd_args.append("-o");
-    try cmd_args.append(output_name);
+    try cmd_args.append(exe_path);
 
     if (config.verbose) {
         print("Linking: ", .{});
@@ -274,10 +276,20 @@ fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: Ar
         print("✓ Linked executable: {s}\n", .{output_name});
     }
 
-    return try allocator.dupe(u8, output_name);
+    return exe_path;
 }
 
-fn cleanObjectFiles(object_files: ArrayList([]const u8), verbose: bool) void {
+fn cleanObjectFiles(object_files: ArrayList([]const u8), project_folder: []const u8, verbose: bool) void {
+    // Try to remove obj directory if it's empty
+    const obj_dir = std.fmt.allocPrint(std.heap.page_allocator, "{s}/obj", .{project_folder}) catch return;
+    defer std.heap.page_allocator.free(obj_dir);
+
+    std.fs.cwd().deleteDir(obj_dir) catch |err| {
+        if (verbose and err != error.DirNotEmpty) {
+            print("Note: Could not remove obj directory: {}\n", .{err});
+        }
+    };
+
     for (object_files.items) |obj_file| {
         std.fs.cwd().deleteFile(obj_file) catch |err| {
             if (verbose) {
@@ -322,28 +334,28 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
         return BuildError.CompilationFailed;
     };
 
-    // Compile each source file to object file
-    print("Phase 1: Compiling source files...\n", .{});
+    // Compile each source file to object file in obj/ subdirectory
+    print("Phase 1: Compiling source files to obj/...\n", .{});
     for (source_files.items) |source_file| {
         const obj_file = compileSourceFile(allocator, config, source_file) catch |err| {
             // Clean up any object files created so far
-            cleanObjectFiles(object_files, false);
+            cleanObjectFiles(object_files, project_folder, config.verbose);
             return err;
         };
         try object_files.append(obj_file);
     }
 
-    // Link all object files into executable
-    print("Phase 2: Linking object files...\n", .{});
+    // Link all object files into executable in project root
+    print("Phase 2: Linking object files to executable...\n", .{});
     const exe_name = linkObjectFiles(allocator, config, object_files) catch |err| {
         // Clean up object files
-        cleanObjectFiles(object_files, config.verbose);
+        cleanObjectFiles(object_files, project_folder, config.verbose);
         return err;
     };
 
     // Clean up object files (unless user wants to keep them)
     if (!config.keep_objects) {
-        cleanObjectFiles(object_files, config.verbose);
+        cleanObjectFiles(object_files, project_folder, config.verbose);
     } else {
         print("Object files kept as requested\n", .{});
         if (config.verbose) {
@@ -358,13 +370,12 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
     return exe_name;
 }
 
-fn runExecutable(allocator: Allocator, exe_name: []const u8, verbose: bool) !void {
+fn runExecutable(allocator: Allocator, exe_path: []const u8, verbose: bool) !void {
     if (verbose) {
-        print("Running: ./{s}\n", .{exe_name});
+        print("Running: {s}\n", .{exe_path});
     }
 
-    const cmd_args = [_][]const u8{std.fmt.allocPrint(allocator, "./{s}", .{exe_name}) catch return};
-    defer allocator.free(cmd_args[0]);
+    const cmd_args = [_][]const u8{exe_path};
 
     var child = std.process.Child.init(&cmd_args, allocator);
 
