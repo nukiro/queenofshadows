@@ -160,14 +160,6 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     try cmd_args.append("-o");
     try cmd_args.append(obj_name);
 
-    if (config.verbose) {
-        print("Compiling {s} -> {s}: ", .{ source_file, obj_name });
-        for (cmd_args.items) |arg| {
-            print("{s} ", .{arg});
-        }
-        print("\n", .{});
-    }
-
     // Execute compile command
     var child = std.process.Child.init(cmd_args.items, allocator);
     child.stdout_behavior = .Pipe;
@@ -228,14 +220,6 @@ fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: Ar
     const exe_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ project_folder, output_name });
     try cmd_args.append("-o");
     try cmd_args.append(exe_path);
-
-    if (config.verbose) {
-        print("Linking: ", .{});
-        for (cmd_args.items) |arg| {
-            print("{s} ", .{arg});
-        }
-        print("\n", .{});
-    }
 
     // Execute link command
     var child = std.process.Child.init(cmd_args.items, allocator);
@@ -325,9 +309,6 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
 
     const project_folder = config.project.?;
 
-    print("Building project with {d} source files...\n", .{source_files.items.len});
-    print("Project folder: {s}\n", .{project_folder});
-
     // Ensure obj directory exists
     ensureObjDirectory(project_folder) catch |err| {
         print("Error: Could not create obj directory: {}\n", .{err});
@@ -356,23 +337,15 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
     // Clean up object files (unless user wants to keep them)
     if (!config.keep_objects) {
         cleanObjectFiles(object_files, project_folder, config.verbose);
-    } else {
-        print("Object files kept as requested\n", .{});
-        if (config.verbose) {
-            print("Object files:\n", .{});
-            for (object_files.items) |obj_file| {
-                print("  {s}\n", .{obj_file});
-            }
-        }
     }
 
-    print("Build successful!\n", .{});
+    print("Build successful!\n\n", .{});
     return exe_name;
 }
 
 fn runExecutable(allocator: Allocator, exe_path: []const u8, verbose: bool) !void {
     if (verbose) {
-        print("Running: {s}\n", .{exe_path});
+        print("Running: {s}\n\n", .{exe_path});
     }
 
     const cmd_args = [_][]const u8{exe_path};
@@ -419,6 +392,7 @@ pub fn main() !void {
         for (source_files.items) |file| {
             print("  {s}\n", .{file});
         }
+        print("\n", .{});
     }
 
     // thirdly, build the project
