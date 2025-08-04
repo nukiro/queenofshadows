@@ -151,10 +151,11 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     // Add source file
     try cmd_args.append(source_file);
 
-    // Generate object file name
+    // Generate object file name in obj/ subdirectory
     const base_name = std.fs.path.basename(source_file);
     // Remove .c extension
-    const obj_name = try std.fmt.allocPrint(allocator, "{s}.o", .{base_name[0 .. base_name.len - 2]});
+    const project_folder = config.project.?;
+    const obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}.o", .{ project_folder, base_name[0 .. base_name.len - 2] }); // Remove .c extension
 
     try cmd_args.append("-o");
     try cmd_args.append(obj_name);
