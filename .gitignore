@@ -59,3 +59,15 @@ dkms.conf
 
 # Game Executable
 queen
+main
+
+# Zig
+.zig-cache/
+zig-out/
+bar
+*.o
+*.exe
+.DS_Store
+
+# Coding Tests
+.tests/

@@ -1,0 +1,13 @@
+.{
+    .name = .zmake,
+    .version = "0.1.0",
+    .fingerprint = 0x4ec8a601628d5376,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "README.md",
+    },
+}
