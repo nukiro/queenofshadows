@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c23
 
-SRC=error.c logging.c game.c camera.c hero.c main.c
+SRC=error.c logging.c game.c world.c camera.c hero.c main.c
 OBJS=$(SRC:.c=.o)
 
 LIBS=-lraylib -lm -ldl -lpthread -lGL -lrt -lX11

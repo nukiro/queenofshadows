@@ -1,5 +1,6 @@
 #include "logging.h"
 #include "camera.h"
+#include "world.h"
 #include "hero.h"
 #include "game.h"
 
@@ -64,7 +65,11 @@ int main(void)
     info(&logger, "Running...");
 
     InitWindow(game.window.width, game.window.heigth, game.name);
+
     SetTargetFPS(game.target_fps);
+
+    struct World world = create_world();
+    world_init(&world);
 
     struct Hero hero = create_hero((Vector3){.0f, .0f, 0.f});
     // initialize camera by hero position
@@ -77,8 +82,12 @@ int main(void)
 
         // Action Input
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
             // From mouse position, generate a ray
-            move_hero(&hero, raycast_camera(&camera, GetMousePosition()), double_click(&first_click, &last_click_time));
+            Vector3 ray = raycast_camera(&camera, GetMousePosition());
+            if (find_path(&world, hero.position, ray))
+                move_hero(&hero, ray, double_click(&first_click, &last_click_time));
+        }
 
         // Camera Input
         if (IsKeyDown(KEY_W))
@@ -106,7 +115,36 @@ int main(void)
         DrawCube(hero.position, 0.5f, 2.0f, 0.5f, RED);
         DrawCubeWires(hero.position, 0.5f, 2.0f, 0.5f, BLUE);
 
-        DrawGrid(100, 0.25f);
+        DrawGrid(22, 0.5f);
+
+        // Draw 3D walkable grid
+        for (int x = -1 * grid_size(); x < grid_size() + 1; x++)
+        {
+            for (int z = -1 * grid_size(); z < grid_size() + 1; z++)
+            {
+                Vector3 position = {x * tile_size(), 0.0f, z * tile_size()};
+                Color tileColor;
+
+                int vx, vy;
+                world_to_grid(position, &vx, &vy);
+
+                if (is_walkable(&world, vx, vy) == 1)
+                {
+                    tileColor = ((x + z) % 2 == 0) ? (Color){100, 100, 100, 200} : (Color){120, 120, 120, 200};
+                    DrawCube(position, tile_size() * 0.95f, 0.0f, tile_size() * 0.95f, tileColor);
+                    DrawCubeWires(position, tile_size(), 0.0f, tile_size(), LIGHTGRAY);
+                }
+            }
+        }
+
+        // Draw path
+        for (int i = 0; i < path_length_number(); i++)
+        {
+            Vector3 pathPos = node(i);
+            pathPos.y = 0.1f;
+            // Color pathColor = (i <= currentPathIndex) ? GREEN : YELLOW;
+            DrawCube(pathPos, 0.3f, 0.2f, 0.3f, YELLOW);
+        }
 
         EndMode3D();
 

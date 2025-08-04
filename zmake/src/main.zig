@@ -221,6 +221,15 @@ fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: Ar
     try cmd_args.append("-o");
     try cmd_args.append(exe_path);
 
+    // Add libraries
+    try cmd_args.append("-lraylib");
+    try cmd_args.append("-lm");
+    try cmd_args.append("-ldl");
+    try cmd_args.append("-lpthread");
+    try cmd_args.append("-lGL");
+    try cmd_args.append("-lrt");
+    try cmd_args.append("-lX11");
+
     // Execute link command
     var child = std.process.Child.init(cmd_args.items, allocator);
     child.stdout_behavior = .Pipe;
