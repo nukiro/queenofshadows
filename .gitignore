@@ -62,15 +62,18 @@ queen
 
 # Playground and Test executables
 main
+game
 
 
 # Zig
 .zig-cache/
 zig-out/
-bar
 *.o
 *.exe
 .DS_Store
 
 # Coding Tests
 .tests/
+
+# Object folder
+obj/
