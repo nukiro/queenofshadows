@@ -9,7 +9,8 @@ const Config = struct {
     output: ?[]const u8 = null,
     debug: bool = true,
     verbose: bool = true,
-    run: bool = true,
+    run_after_build: bool = true,
+    keep_objects: bool = true,
 
     fn deinit(self: *Config, allocator: Allocator) void {
         if (self.project) |f| allocator.free(f);
@@ -33,6 +34,7 @@ fn printUsage() void {
     print("  --no-debug          Don't set debug\n", .{});
     print("  --no-run            Don't run the program after building\n", .{});
     print("  --no-verbose        Don't enable verbose output\n", .{});
+    print("  --no-keep-objects   Don't keep compiled files\n", .{});
     print("  --help              Show this help message\n\n", .{});
 }
 
@@ -72,15 +74,19 @@ fn parseArgs(allocator: Allocator) !Config {
         }
 
         if (std.mem.eql(u8, arg, "--no-debug")) {
-            config.verbose = false;
+            config.debug = false;
         }
 
         if (std.mem.eql(u8, arg, "--no-run")) {
-            config.run = false;
+            config.run_after_build = false;
         }
 
         if (std.mem.eql(u8, arg, "--no-verbose")) {
             config.verbose = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--no-keep-objects")) {
+            config.keep_objects = false;
         }
     }
 
@@ -126,7 +132,7 @@ fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const 
     return source_files;
 }
 
-fn buildProject(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
+fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: []const u8) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
     defer cmd_args.deinit();
 
@@ -139,25 +145,29 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
     try cmd_args.append("-pedantic");
     try cmd_args.append("-std=c23");
 
-    // Add source files
-    for (source_files.items) |file| {
-        try cmd_args.append(file);
-    }
+    // Add compile-only flag
+    try cmd_args.append("-c");
 
-    // Add output
-    const output_name = config.output orelse "main";
+    // Add source file
+    try cmd_args.append(source_file);
+
+    // Generate object file name
+    const base_name = std.fs.path.basename(source_file);
+    // Remove .c extension
+    const obj_name = try std.fmt.allocPrint(allocator, "{s}.o", .{base_name[0 .. base_name.len - 2]});
+
     try cmd_args.append("-o");
-    try cmd_args.append(output_name);
+    try cmd_args.append(obj_name);
 
     if (config.verbose) {
-        print("Building with command: ", .{});
+        print("Compiling {s} -> {s}: ", .{ source_file, obj_name });
         for (cmd_args.items) |arg| {
             print("{s} ", .{arg});
         }
         print("\n", .{});
     }
 
-    // Execute build command
+    // Execute compile command
     var child = std.process.Child.init(cmd_args.items, allocator);
     child.stdout_behavior = .Pipe;
     child.stderr_behavior = .Pipe;
@@ -182,18 +192,169 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
     switch (result) {
         .Exited => |code| {
             if (code != 0) {
-                print("Build failed with exit code: {d}\n", .{code});
+                print("Compilation failed for {s} with exit code: {d}\n", .{ source_file, code });
                 return BuildError.CompilationFailed;
             }
         },
         else => {
-            print("Build process terminated unexpectedly\n", .{});
+            print("Compilation process terminated unexpectedly for {s}\n", .{source_file});
             return BuildError.CompilationFailed;
         },
     }
 
-    print("Build successful!\n", .{});
+    if (config.verbose) {
+        print("✓ Compiled {s}\n", .{source_file});
+    }
+
+    return obj_name;
+}
+
+fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: ArrayList([]const u8)) ![]const u8 {
+    var cmd_args = ArrayList([]const u8).init(allocator);
+    defer cmd_args.deinit();
+
+    // Add compiler/linker
+    try cmd_args.append("gcc");
+
+    // Add object files
+    for (object_files.items) |obj_file| {
+        try cmd_args.append(obj_file);
+    }
+
+    // Add output
+    const output_name = config.output orelse "main";
+    try cmd_args.append("-o");
+    try cmd_args.append(output_name);
+
+    if (config.verbose) {
+        print("Linking: ", .{});
+        for (cmd_args.items) |arg| {
+            print("{s} ", .{arg});
+        }
+        print("\n", .{});
+    }
+
+    // Execute link command
+    var child = std.process.Child.init(cmd_args.items, allocator);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+
+    try child.spawn();
+
+    const stdout = try child.stdout.?.readToEndAlloc(allocator, 1024 * 1024);
+    defer allocator.free(stdout);
+    const stderr = try child.stderr.?.readToEndAlloc(allocator, 1024 * 1024);
+    defer allocator.free(stderr);
+
+    const result = try child.wait();
+
+    if (stdout.len > 0) {
+        print("{s}", .{stdout});
+    }
+
+    if (stderr.len > 0) {
+        print("{s}", .{stderr});
+    }
+
+    switch (result) {
+        .Exited => |code| {
+            if (code != 0) {
+                print("Linking failed with exit code: {d}\n", .{code});
+                return BuildError.CompilationFailed;
+            }
+        },
+        else => {
+            print("Linking process terminated unexpectedly\n", .{});
+            return BuildError.CompilationFailed;
+        },
+    }
+
+    if (config.verbose) {
+        print("✓ Linked executable: {s}\n", .{output_name});
+    }
+
     return try allocator.dupe(u8, output_name);
+}
+
+fn cleanObjectFiles(object_files: ArrayList([]const u8), verbose: bool) void {
+    for (object_files.items) |obj_file| {
+        std.fs.cwd().deleteFile(obj_file) catch |err| {
+            if (verbose) {
+                print("Warning: Could not delete {s}: {}\n", .{ obj_file, err });
+            }
+        };
+        if (verbose) {
+            print("✓ Cleaned {s}\n", .{obj_file});
+        }
+    }
+}
+
+fn ensureObjDirectory(project_folder: []const u8) !void {
+    const obj_path = try std.fmt.allocPrint(std.heap.page_allocator, "{s}/obj", .{project_folder});
+    defer std.heap.page_allocator.free(obj_path);
+
+    std.fs.cwd().makeDir(obj_path) catch |err| switch (err) {
+        error.PathAlreadyExists => {}, // Directory already exists, that's fine
+        else => return err,
+    };
+}
+
+fn buildProject(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
+    // hold object file names
+    var object_files = ArrayList([]const u8).init(allocator);
+    // clean it before leave
+    defer {
+        for (object_files.items) |obj_file| {
+            allocator.free(obj_file);
+        }
+        object_files.deinit();
+    }
+
+    const project_folder = config.project.?;
+
+    print("Building project with {d} source files...\n", .{source_files.items.len});
+    print("Project folder: {s}\n", .{project_folder});
+
+    // Ensure obj directory exists
+    ensureObjDirectory(project_folder) catch |err| {
+        print("Error: Could not create obj directory: {}\n", .{err});
+        return BuildError.CompilationFailed;
+    };
+
+    // Compile each source file to object file
+    print("Phase 1: Compiling source files...\n", .{});
+    for (source_files.items) |source_file| {
+        const obj_file = compileSourceFile(allocator, config, source_file) catch |err| {
+            // Clean up any object files created so far
+            cleanObjectFiles(object_files, false);
+            return err;
+        };
+        try object_files.append(obj_file);
+    }
+
+    // Link all object files into executable
+    print("Phase 2: Linking object files...\n", .{});
+    const exe_name = linkObjectFiles(allocator, config, object_files) catch |err| {
+        // Clean up object files
+        cleanObjectFiles(object_files, config.verbose);
+        return err;
+    };
+
+    // Clean up object files (unless user wants to keep them)
+    if (!config.keep_objects) {
+        cleanObjectFiles(object_files, config.verbose);
+    } else {
+        print("Object files kept as requested\n", .{});
+        if (config.verbose) {
+            print("Object files:\n", .{});
+            for (object_files.items) |obj_file| {
+                print("  {s}\n", .{obj_file});
+            }
+        }
+    }
+
+    print("Build successful!\n", .{});
+    return exe_name;
 }
 
 fn runExecutable(allocator: Allocator, exe_name: []const u8, verbose: bool) !void {
