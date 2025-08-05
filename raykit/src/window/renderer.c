@@ -1,4 +1,4 @@
-#include "config.h"
+#include "../raykit.h"
 #include "raylib.h"
 
 #define RENDER_DEBUG_FONT_SIZE 10

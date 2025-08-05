@@ -4,9 +4,17 @@ Raylib Wrapper Library
 
 ## Compile library
 
+Manually
+
 ```shell
 gcc -c raykit.c -o raykit.o
 ar rcs libraykit.a raykit.o
+```
+
+Using `zmake`:
+
+```shell
+zmake --folder raykit --static-library
 ```
 
 ## Link it
