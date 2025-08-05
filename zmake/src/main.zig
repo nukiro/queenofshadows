@@ -31,6 +31,7 @@ fn printUsage() void {
     print("Usage: zmake [OPTIONS]\n\n", .{});
     print("Options:\n", .{});
     print("  --folder <path>     Specify the project folder (required)\n", .{});
+    print("  --clean             Clean all project artifacts\n", .{});
     print("  --no-debug          Don't set debug\n", .{});
     print("  --no-run            Don't run the program after building\n", .{});
     print("  --no-verbose        Don't enable verbose output\n", .{});
@@ -70,6 +71,10 @@ fn parseArgs(allocator: Allocator) !Config {
                 print("Error: --output requires a path argument\n", .{});
                 return error.InvalidArgument;
             }
+        }
+
+        if (std.mem.eql(u8, arg, "--clean")) {
+            config.clean_only = true;
         }
 
         if (std.mem.eql(u8, arg, "--no-debug")) {
@@ -365,6 +370,90 @@ fn runExecutable(allocator: Allocator, exe_path: []const u8, verbose: bool) !voi
     }
 }
 
+fn cleanAllArtifacts(allocator: Allocator, config: *const Config) !void {
+    const project_folder = config.project.?;
+
+    print("Cleaning build artifacts in: {s}\n", .{project_folder});
+
+    var cleaned_count: u32 = 0;
+
+    // Clean obj directory and its contents
+    const obj_dir_path = try std.fmt.allocPrint(allocator, "{s}/obj", .{project_folder});
+    defer allocator.free(obj_dir_path);
+
+    // Try to open obj directory
+    var obj_dir = std.fs.cwd().openDir(obj_dir_path, .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => {
+            print("Error: Folder '{s}' not found\n", .{obj_dir_path});
+            return BuildError.InvalidFolder;
+        },
+        else => return err,
+    };
+    defer obj_dir.close();
+
+    var iterator = obj_dir.iterate();
+    while (try iterator.next()) |entry| {
+        if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".o")) {
+            const obj_file_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ obj_dir_path, entry.name });
+            defer allocator.free(obj_file_path);
+
+            std.fs.cwd().deleteFile(obj_file_path) catch |err| {
+                if (config.verbose) {
+                    print("Warning: Could not delete {s}: {}\n", .{ obj_file_path, err });
+                }
+                continue;
+            };
+
+            if (config.verbose) {
+                print("✓ Removed {s}\n", .{obj_file_path});
+            }
+            cleaned_count += 1;
+        }
+    }
+
+    // Try to remove the obj directory if it's empty
+    std.fs.cwd().deleteDir(obj_dir_path) catch |err| {
+        if (config.verbose and err != error.DirNotEmpty) {
+            print("Note: Could not remove obj directory: {}\n", .{err});
+        }
+    };
+
+    if (config.verbose) {
+        print("✓ Removed obj directory\n", .{});
+    }
+
+    // Clean potential executables
+    const possible_executables = [_][]const u8{
+        config.output orelse "main",
+        "main",
+        "app",
+        "program",
+    };
+
+    for (possible_executables) |exe_name| {
+        const exe_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ project_folder, exe_name });
+        defer allocator.free(exe_path);
+
+        std.fs.cwd().deleteFile(exe_path) catch |err| {
+            if (config.verbose and err != error.FileNotFound) {
+                print("Note: Could not delete {s}: {}\n", .{ exe_path, err });
+            }
+            continue;
+        };
+
+        if (config.verbose) {
+            print("✓ Removed {s}\n", .{exe_path});
+        }
+        cleaned_count += 1;
+    }
+
+    if (cleaned_count > 0) {
+        print("✓ Cleaned {d} build artifacts\n", .{cleaned_count});
+    } else {
+        print("No build artifacts found to clean\n", .{});
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -375,6 +464,14 @@ pub fn main() !void {
         std.process.exit(1);
     };
     defer config.deinit(allocator);
+
+    // Handle clean-only operation
+    if (config.clean_only) {
+        cleanAllArtifacts(allocator, &config) catch {
+            std.process.exit(1);
+        };
+        return;
+    }
 
     // secondly, find c and h files into the source project folder
     const source_files = findSourceFiles(allocator, config.source.?) catch {
