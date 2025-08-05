@@ -641,6 +641,7 @@ fn cleanAllArtifacts(allocator: Allocator, config: *const Config) !void {
         "main",
         "app",
         "program",
+        "libraykit.a", // remove it from here and find .a file in lib folder
     };
 
     for (possible_executables) |exe_name| {
