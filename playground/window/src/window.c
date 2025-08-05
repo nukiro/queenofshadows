@@ -2,9 +2,7 @@
 #include "renderer.h"
 #include "raylib.h"
 
-#include <stdio.h>
-
-int main(void)
+int run(void)
 {
     InitWindow(CONFIG_SCREEN_WIDTH, CONFIG_SCREEN_HEIGHT, CONFIG_TITLE);
     SetTargetFPS(CONFIG_SCREEN_FPS);
