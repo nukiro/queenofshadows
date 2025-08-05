@@ -11,6 +11,8 @@ const Config = struct {
     verbose: bool = true,
     run_after_build: bool = true,
     clean_only: bool = false,
+    executable: bool = true,
+    static_library: bool = false,
 
     fn deinit(self: *Config, allocator: Allocator) void {
         if (self.project) |f| allocator.free(f);
@@ -32,6 +34,7 @@ fn printUsage() void {
     print("Options:\n", .{});
     print("  --folder <path>     Specify the project folder (required)\n", .{});
     print("  --clean             Clean all project artifacts\n", .{});
+    print("  --static-library    Build C static library\n", .{});
     print("  --no-debug          Don't set debug\n", .{});
     print("  --no-run            Don't run the program after building\n", .{});
     print("  --no-verbose        Don't enable verbose output\n", .{});
@@ -87,6 +90,11 @@ fn parseArgs(allocator: Allocator) !Config {
 
         if (std.mem.eql(u8, arg, "--no-verbose")) {
             config.verbose = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--static-library")) {
+            config.static_library = true;
+            config.executable = false;
         }
     }
 
@@ -158,7 +166,7 @@ fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const 
     return source_files;
 }
 
-fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: []const u8) ![]const u8 {
+fn compileLibSourceFile(allocator: Allocator, config: *const Config, source_file: []const u8) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
     defer cmd_args.deinit();
 
@@ -170,9 +178,6 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     try cmd_args.append("-Wextra");
     try cmd_args.append("-pedantic");
     try cmd_args.append("-std=c23");
-
-    // Add our library headers
-    try cmd_args.append("-I./raykit");
 
     // Add compile-only flag
     try cmd_args.append("-c");
@@ -229,6 +234,139 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     }
 
     return obj_name;
+}
+
+fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: []const u8) ![]const u8 {
+    var cmd_args = ArrayList([]const u8).init(allocator);
+    defer cmd_args.deinit();
+
+    // Add compiler
+    try cmd_args.append("gcc");
+
+    // Add flags
+    try cmd_args.append("-Wall");
+    try cmd_args.append("-Wextra");
+    try cmd_args.append("-pedantic");
+    try cmd_args.append("-std=c23");
+
+    // Add our library headers
+    try cmd_args.append("-I./raykit/src");
+
+    // Add compile-only flag
+    try cmd_args.append("-c");
+
+    // Add source file
+    try cmd_args.append(source_file);
+
+    // Generate object file name in obj/ subdirectory
+    const base_name = std.fs.path.basename(source_file);
+    // Remove .c extension
+    const project_folder = config.project.?;
+    const obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}.o", .{ project_folder, base_name[0 .. base_name.len - 2] }); // Remove .c extension
+
+    try cmd_args.append("-o");
+    try cmd_args.append(obj_name);
+
+    // Execute compile command
+    var child = std.process.Child.init(cmd_args.items, allocator);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+
+    try child.spawn();
+
+    const stdout = try child.stdout.?.readToEndAlloc(allocator, 1024 * 1024);
+    defer allocator.free(stdout);
+    const stderr = try child.stderr.?.readToEndAlloc(allocator, 1024 * 1024);
+    defer allocator.free(stderr);
+
+    const result = try child.wait();
+
+    if (stdout.len > 0) {
+        print("{s}", .{stdout});
+    }
+
+    if (stderr.len > 0) {
+        print("{s}", .{stderr});
+    }
+
+    switch (result) {
+        .Exited => |code| {
+            if (code != 0) {
+                print("Compilation failed for {s} with exit code: {d}\n", .{ source_file, code });
+                return BuildError.CompilationFailed;
+            }
+        },
+        else => {
+            print("Compilation process terminated unexpectedly for {s}\n", .{source_file});
+            return BuildError.CompilationFailed;
+        },
+    }
+
+    if (config.verbose) {
+        print("✓ Compiled {s}\n", .{source_file});
+    }
+
+    return obj_name;
+}
+
+fn linkLibObjectFiles(allocator: Allocator, config: *const Config, object_files: ArrayList([]const u8)) ![]const u8 {
+    var cmd_args = ArrayList([]const u8).init(allocator);
+    defer cmd_args.deinit();
+
+    // Add compiler/linker
+    try cmd_args.append("ar");
+    try cmd_args.append("rcs");
+
+    // Add output
+    const project_folder = config.project.?;
+    const lib_path = try std.fmt.allocPrint(allocator, "{s}/lib{s}.a", .{ project_folder, project_folder });
+    try cmd_args.append(lib_path);
+
+    // Add object files
+    for (object_files.items) |obj_file| {
+        try cmd_args.append(obj_file);
+    }
+
+    // Execute link command
+    var child = std.process.Child.init(cmd_args.items, allocator);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+
+    try child.spawn();
+
+    const stdout = try child.stdout.?.readToEndAlloc(allocator, 1024 * 1024);
+    defer allocator.free(stdout);
+    const stderr = try child.stderr.?.readToEndAlloc(allocator, 1024 * 1024);
+    defer allocator.free(stderr);
+
+    const result = try child.wait();
+
+    if (stdout.len > 0) {
+        print("{s}", .{stdout});
+    }
+
+    if (stderr.len > 0) {
+        print("{s}", .{stderr});
+    }
+
+    switch (result) {
+        .Exited => |code| {
+            if (code != 0) {
+                print("Linking failed with exit code: {d}\n", .{code});
+                return BuildError.CompilationFailed;
+            }
+        },
+        else => {
+            print("Linking process terminated unexpectedly\n", .{});
+            return BuildError.CompilationFailed;
+        },
+    }
+
+    if (config.verbose) {
+        print("✓ Linked library: {s}\n", .{project_folder});
+    }
+
+    return lib_path;
 }
 
 fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: ArrayList([]const u8)) ![]const u8 {
@@ -338,7 +476,49 @@ fn ensureObjDirectory(project_folder: []const u8) !void {
     };
 }
 
-fn buildProject(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
+fn buildStaticLibrary(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
+    // hold object file names
+    var object_files = ArrayList([]const u8).init(allocator);
+    // clean it before leave
+    defer {
+        for (object_files.items) |obj_file| {
+            allocator.free(obj_file);
+        }
+        object_files.deinit();
+    }
+
+    const project_folder = config.project.?;
+
+    // Ensure obj directory exists
+    ensureObjDirectory(project_folder) catch |err| {
+        print("Error: Could not create obj directory: {}\n", .{err});
+        return BuildError.CompilationFailed;
+    };
+
+    // Compile each source file to object file in obj/ subdirectory
+    print("Phase 1: Compiling source files to obj/...\n", .{});
+    for (source_files.items) |source_file| {
+        const obj_file = compileLibSourceFile(allocator, config, source_file) catch |err| {
+            // Clean up any object files created so far
+            cleanObjectFiles(object_files, project_folder, config.verbose);
+            return err;
+        };
+        try object_files.append(obj_file);
+    }
+
+    // Link all object files into executable in project root
+    print("Phase 2: Linking object files to executable...\n", .{});
+    const lib_name = linkLibObjectFiles(allocator, config, object_files) catch |err| {
+        // Clean up object files
+        cleanObjectFiles(object_files, project_folder, config.verbose);
+        return err;
+    };
+
+    print("Build successful!\n\n", .{});
+    return lib_name;
+}
+
+fn buildExecutable(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
     // hold object file names
     var object_files = ArrayList([]const u8).init(allocator);
     // clean it before leave
@@ -524,13 +704,21 @@ pub fn main() !void {
         print("\n", .{});
     }
 
-    // thirdly, build the project
-    const exe_name = buildProject(allocator, &config, source_files) catch {
+    // thirdly, build an executable or a library
+    if (config.static_library) {
+        const lib_name = buildStaticLibrary(allocator, &config, source_files) catch {
+            std.process.exit(1);
+        };
+        defer allocator.free(lib_name);
+        return;
+    }
+    // build the exe
+    const exe_name = buildExecutable(allocator, &config, source_files) catch {
         std.process.exit(1);
     };
     defer allocator.free(exe_name);
 
-    // fourthly, run the project
+    // fourthly, run the executable
     if (config.run_after_build) {
         runExecutable(allocator, exe_name, config.verbose) catch {
             std.process.exit(1);
