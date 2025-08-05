@@ -10,7 +10,7 @@ const Config = struct {
     debug: bool = true,
     verbose: bool = true,
     run_after_build: bool = true,
-    keep_objects: bool = true,
+    clean_only: bool = false,
 
     fn deinit(self: *Config, allocator: Allocator) void {
         if (self.project) |f| allocator.free(f);
@@ -34,7 +34,6 @@ fn printUsage() void {
     print("  --no-debug          Don't set debug\n", .{});
     print("  --no-run            Don't run the program after building\n", .{});
     print("  --no-verbose        Don't enable verbose output\n", .{});
-    print("  --no-keep-objects   Don't keep compiled files\n", .{});
     print("  --help              Show this help message\n\n", .{});
 }
 
@@ -83,10 +82,6 @@ fn parseArgs(allocator: Allocator) !Config {
 
         if (std.mem.eql(u8, arg, "--no-verbose")) {
             config.verbose = false;
-        }
-
-        if (std.mem.eql(u8, arg, "--no-keep-objects")) {
-            config.keep_objects = false;
         }
     }
 
@@ -342,11 +337,6 @@ fn buildProject(allocator: Allocator, config: *const Config, source_files: Array
         cleanObjectFiles(object_files, project_folder, config.verbose);
         return err;
     };
-
-    // Clean up object files (unless user wants to keep them)
-    if (!config.keep_objects) {
-        cleanObjectFiles(object_files, project_folder, config.verbose);
-    }
 
     print("Build successful!\n\n", .{});
     return exe_name;

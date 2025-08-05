@@ -64,7 +64,6 @@ queen
 main
 game
 
-
 # Zig
 .zig-cache/
 zig-out/
