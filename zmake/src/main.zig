@@ -100,6 +100,41 @@ fn parseArgs(allocator: Allocator) !Config {
     return config;
 }
 
+fn findSourceFilesRecursive(allocator: Allocator, folder: []const u8, source_files: *ArrayList([]const u8)) !void {
+    var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => return,
+        else => return err,
+    };
+    defer dir.close();
+
+    var iterator = dir.iterate();
+    while (try iterator.next()) |entry| {
+        if (entry.kind == .file) {
+            const name = entry.name;
+            if (std.mem.endsWith(u8, name, ".c")) {
+                const full_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ folder, name });
+                try source_files.append(full_path);
+            }
+        } else if (entry.kind == .directory) {
+            // Skip common non-source directories
+            if (std.mem.eql(u8, entry.name, "obj") or
+                std.mem.eql(u8, entry.name, "build") or
+                std.mem.eql(u8, entry.name, "bin") or
+                std.mem.eql(u8, entry.name, ".git") or
+                std.mem.eql(u8, entry.name, ".vscode") or
+                std.mem.eql(u8, entry.name, "node_modules"))
+            {
+                continue;
+            }
+
+            // Recursively search subdirectories
+            const sub_folder = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ folder, entry.name });
+            defer allocator.free(sub_folder);
+            try findSourceFilesRecursive(allocator, sub_folder, source_files);
+        }
+    }
+}
+
 fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const u8) {
     var source_files = ArrayList([]const u8).init(allocator);
 
@@ -112,17 +147,8 @@ fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const 
     };
     defer dir.close();
 
-    var iterator = dir.iterate();
-    while (try iterator.next()) |entry| {
-        if (entry.kind == .file) {
-            const name = entry.name;
-            // get only c files
-            if (std.mem.endsWith(u8, name, ".c")) {
-                const full_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ folder, name });
-                try source_files.append(full_path);
-            }
-        }
-    }
+    // Recursively find all .c files
+    try findSourceFilesRecursive(allocator, folder, &source_files);
 
     if (source_files.items.len == 0) {
         print("Error: No .c files found in folder '{s}'\n", .{folder});
