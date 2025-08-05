@@ -145,6 +145,9 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     try cmd_args.append("-pedantic");
     try cmd_args.append("-std=c23");
 
+    // Add our library headers
+    try cmd_args.append("-I./raykit");
+
     // Add compile-only flag
     try cmd_args.append("-c");
 
@@ -213,6 +216,10 @@ fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: Ar
     for (object_files.items) |obj_file| {
         try cmd_args.append(obj_file);
     }
+
+    // Add our libraries
+    try cmd_args.append("-L./raykit");
+    try cmd_args.append("-lraykit");
 
     // Add output
     const output_name = config.output orelse "main";

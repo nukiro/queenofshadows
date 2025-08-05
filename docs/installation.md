@@ -10,7 +10,8 @@
     {
       "name": "Linux",
       "cStandard": "c23",
-      "defines": ["true=1", "false=0"]
+      "defines": ["true=1", "false=0"],
+      "includePath": ["${workspaceFolder}/**"]
     }
   ],
   "version": 4
