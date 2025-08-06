@@ -10,3 +10,5 @@
 #define CONFIG_SCREEN_HEIGHT 1080
 #define CONFIG_SCREEN_BACKGROUND_COLOR (Color){15, 15, 15, 255}
 #define CONFIG_SCREEN_FPS 60
+
+int raykit_run();

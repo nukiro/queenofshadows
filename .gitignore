@@ -64,7 +64,6 @@ queen
 main
 game
 
-
 # Zig
 .zig-cache/
 zig-out/
@@ -77,3 +76,4 @@ zig-out/
 
 # Object folder
 obj/
+include/
