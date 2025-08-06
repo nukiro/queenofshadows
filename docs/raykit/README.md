@@ -23,3 +23,17 @@ zmake --folder raykit --static-library
 # Relative paths (if lib is in your project)
 gcc main.c -L./lib -lraykit -o program
 ```
+
+## Components
+
+### Window
+
+Base **raylib** window with dev parameters shown if `DEBUG` configuration variables is set.
+
+![raylib window](window.png)
+
+## Run it
+
+```shell
+zmake --folder playground/window
+```
