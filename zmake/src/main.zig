@@ -189,10 +189,18 @@ fn compileLibSourceFile(allocator: Allocator, config: *const Config, source_file
     const base_name = std.fs.path.basename(source_file);
     // Remove .c extension
     const project_folder = config.project.?;
-    const obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}.o", .{ project_folder, base_name[0 .. base_name.len - 2] }); // Remove .c extension
 
-    try cmd_args.append("-o");
-    try cmd_args.append(obj_name);
+    var obj_name: []u8 = undefined;
+    if (try extractPathAfterSrc(allocator, source_file)) |prefix_file| {
+        defer allocator.free(prefix_file);
+        obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}_{s}.o", .{ project_folder, prefix_file, base_name[0 .. base_name.len - 2] }); // Remove .c extension
+        try cmd_args.append("-o");
+        try cmd_args.append(obj_name);
+    } else {
+        obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}.o", .{ project_folder, base_name[0 .. base_name.len - 2] }); // Remove .c extension
+        try cmd_args.append("-o");
+        try cmd_args.append(obj_name);
+    }
 
     // Execute compile command
     var child = std.process.Child.init(cmd_args.items, allocator);
@@ -262,7 +270,18 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     const base_name = std.fs.path.basename(source_file);
     // Remove .c extension
     const project_folder = config.project.?;
-    const obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}.o", .{ project_folder, base_name[0 .. base_name.len - 2] }); // Remove .c extension
+
+    var obj_name: []u8 = undefined;
+    if (try extractPathAfterSrc(allocator, source_file)) |prefix_file| {
+        defer allocator.free(prefix_file);
+        obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}_{s}.o", .{ project_folder, prefix_file, base_name[0 .. base_name.len - 2] }); // Remove .c extension
+        try cmd_args.append("-o");
+        try cmd_args.append(obj_name);
+    } else {
+        obj_name = try std.fmt.allocPrint(allocator, "{s}/obj/{s}.o", .{ project_folder, base_name[0 .. base_name.len - 2] }); // Remove .c extension
+        try cmd_args.append("-o");
+        try cmd_args.append(obj_name);
+    }
 
     try cmd_args.append("-o");
     try cmd_args.append(obj_name);
@@ -443,6 +462,40 @@ fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: Ar
     return exe_path;
 }
 
+fn extractPathAfterSrc(allocator: Allocator, path: []const u8) !?[]u8 {
+    // Find "src/" in the path
+    const src_marker = "src/";
+    const src_index = std.mem.indexOf(u8, path, src_marker);
+
+    if (src_index == null) {
+        return null; // "src/" not found
+    }
+
+    // Start after "src/"
+    const start_index = src_index.? + src_marker.len;
+
+    if (start_index >= path.len) {
+        return null; // Nothing after "src/"
+    }
+
+    const path_after_src = path[start_index..];
+
+    // Find the last '/' to remove the filename
+    const last_slash = std.mem.lastIndexOf(u8, path_after_src, "/");
+
+    if (last_slash == null) {
+        return null; // No directory structure after src/
+    }
+
+    const result = path_after_src[0..last_slash.?];
+
+    // Create a copy and replace '/' with '_'
+    const result_copy = try allocator.dupe(u8, result);
+    std.mem.replaceScalar(u8, result_copy, '/', '_');
+
+    return result_copy;
+}
+
 fn cleanObjectFiles(object_files: ArrayList([]const u8), project_folder: []const u8, verbose: bool) void {
     // Try to remove obj directory if it's empty
     const obj_dir = std.fmt.allocPrint(std.heap.page_allocator, "{s}/obj", .{project_folder}) catch return;
@@ -513,6 +566,13 @@ fn buildStaticLibrary(allocator: Allocator, config: *const Config, source_files:
         cleanObjectFiles(object_files, project_folder, config.verbose);
         return err;
     };
+
+    // const include_path = try std.fmt.allocPrint(allocator, "{s}/include", .{project_folder});
+    // print("{s}\n", .{include_path});
+    // ensureObjDirectory(include_path) catch |err| {
+    //     print("Error: Could not create include library directory: {}\n", .{err});
+    //     return BuildError.CompilationFailed;
+    // };
 
     print("Build successful!\n\n", .{});
     return lib_name;
