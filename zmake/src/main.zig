@@ -259,7 +259,7 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     try cmd_args.append("-std=c23");
 
     // Add our library headers
-    try cmd_args.append("-I./raykit/src");
+    try cmd_args.append("-I./raykit/include");
 
     // Add compile-only flag
     try cmd_args.append("-c");
