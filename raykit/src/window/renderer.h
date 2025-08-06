@@ -1,3 +1,3 @@
 #pragma once
 
-void render();
+void render(const Camera3D *camera);

@@ -26,9 +26,15 @@ void render_debug()
     render_debug_text(TextFormat("Version: %s", CONFIG_VERSION), x, &y);
 }
 
-void render()
+void render(const Camera3D *camera)
 {
     ClearBackground(CONFIG_SCREEN_BACKGROUND_COLOR);
+
+    BeginMode3D(*camera);
+
+    DrawGrid(10, 1.0f);
+
+    EndMode3D();
 
 #ifdef CONFIG_ENABLE_DEBUG
     render_debug();
