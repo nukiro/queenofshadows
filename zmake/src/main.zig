@@ -1,5 +1,6 @@
 const std = @import("std");
 const print = std.debug.print;
+const cwd = std.fs.cwd;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 
@@ -529,6 +530,38 @@ fn ensureObjDirectory(project_folder: []const u8) !void {
     };
 }
 
+fn ensureIncludeDirectory(project_folder: []const u8) !void {
+    const obj_path = try std.fmt.allocPrint(std.heap.page_allocator, "{s}/include", .{project_folder});
+    defer std.heap.page_allocator.free(obj_path);
+
+    std.fs.cwd().makeDir(obj_path) catch |err| switch (err) {
+        error.PathAlreadyExists => {}, // Directory already exists, that's fine
+        else => return err,
+    };
+}
+
+fn copy(allocator: Allocator, project_folder: []const u8) !void {
+    const source_path = try std.fmt.allocPrint(allocator, "{s}/src/{s}.h", .{ project_folder, project_folder });
+    defer allocator.free(source_path);
+    const dest_path = try std.fmt.allocPrint(allocator, "{s}/include/{s}.h", .{ project_folder, project_folder });
+    defer allocator.free(dest_path);
+
+    // Open the source file for reading
+    const source_file = try std.fs.cwd().openFile(source_path, .{});
+    defer source_file.close();
+
+    // Read all contents into memory
+    const source_contents = try source_file.readToEndAlloc(allocator, std.math.maxInt(usize));
+    defer allocator.free(source_contents);
+
+    // Create or overwrite the destination file for writing
+    const dest_file = try std.fs.cwd().createFile(dest_path, .{ .truncate = true });
+    defer dest_file.close();
+
+    // Write contents to destination
+    _ = try dest_file.writeAll(source_contents);
+}
+
 fn buildStaticLibrary(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
     // hold object file names
     var object_files = ArrayList([]const u8).init(allocator);
@@ -567,12 +600,12 @@ fn buildStaticLibrary(allocator: Allocator, config: *const Config, source_files:
         return err;
     };
 
-    // const include_path = try std.fmt.allocPrint(allocator, "{s}/include", .{project_folder});
-    // print("{s}\n", .{include_path});
-    // ensureObjDirectory(include_path) catch |err| {
-    //     print("Error: Could not create include library directory: {}\n", .{err});
-    //     return BuildError.CompilationFailed;
-    // };
+    ensureIncludeDirectory(project_folder) catch |err| {
+        print("Error: Could not create include library directory: {}\n", .{err});
+        return BuildError.CompilationFailed;
+    };
+
+    try copy(allocator, project_folder);
 
     print("Build successful!\n\n", .{});
     return lib_name;
