@@ -1,6 +1,5 @@
 const std = @import("std");
 const print = std.debug.print;
-const cwd = std.fs.cwd;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 
@@ -723,10 +722,18 @@ fn cleanAllArtifacts(allocator: Allocator, config: *const Config) !void {
             print("Note: Could not remove obj directory: {}\n", .{err});
         }
     };
-
     if (config.verbose) {
         print("✓ Removed obj directory\n", .{});
     }
+
+    const include_dir_path = try std.fmt.allocPrint(allocator, "{s}/include", .{project_folder});
+    defer allocator.free(include_dir_path);
+
+    const cwd = std.fs.cwd();
+
+    cwd.deleteTree(include_dir_path) catch |err| {
+        return err;
+    };
 
     // Clean potential executables
     const possible_executables = [_][]const u8{
