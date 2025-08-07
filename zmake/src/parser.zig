@@ -1,74 +1,85 @@
 const std = @import("std");
-const configuration = @import("config.zig");
+
+const action = @import("action.zig");
 const helper = @import("helper.zig");
+const errors = @import("errors.zig");
+const utils = @import("utils.zig");
 
 const Allocator = std.mem.Allocator;
+
 const print = std.debug.print;
-const Config = configuration.Config;
+const eql = std.mem.eql;
 
-pub fn arguments(allocator: Allocator) !Config {
+pub fn arguments(allocator: Allocator) !action.Action {
     var args = std.process.args();
-
-    var config = Config{};
-
     _ = args.skip(); // Skip program name
-    while (args.next()) |arg| {
-        // option: help
-        if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
-            helper.menu();
-            std.process.exit(0);
-        }
 
-        if (std.mem.eql(u8, arg, "--folder")) {
-            if (args.next()) |folder| {
-                config.project = try allocator.dupe(u8, folder);
-                // find source folder into the project folder
-                const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
-                defer allocator.free(source);
-                config.source = try allocator.dupe(u8, source);
-            } else {
-                print("Error: --folder requires a path argument\n", .{});
-                return error.InvalidArgument;
-            }
-        }
+    // == Parse Mandatory Arguments [COMMAND] ==
+    // first argument after program name (in second position)
+    // must be the command which will be perfomed
+    const c = try utils.lowercase(allocator, args.next().?);
+    defer allocator.free(c);
+    const command = action.Command.serialize(c) orelse return errors.ParserError.InvalidCommand;
 
-        if (std.mem.eql(u8, arg, "--output")) {
-            if (args.next()) |output| {
-                config.output = try allocator.dupe(u8, output);
-            } else {
-                print("Error: --output requires a path argument\n", .{});
-                return error.InvalidArgument;
-            }
-        }
+    // == Parse Optional Arguments [OPTIONS] ==
+    const perform = action.Action.init(command);
+    // while (args.next()) |arg| {
+    //     // option: help
+    //     if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
+    //         helper.menu();
+    //         std.process.exit(0);
+    //     }
 
-        if (std.mem.eql(u8, arg, "--clean")) {
-            config.clean_only = true;
-        }
+    //     if (std.mem.eql(u8, arg, "--folder")) {
+    //         if (args.next()) |folder| {
+    //             config.project = try allocator.dupe(u8, folder);
+    //             // find source folder into the project folder
+    //             const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
+    //             defer allocator.free(source);
+    //             config.source = try allocator.dupe(u8, source);
+    //         } else {
+    //             print("Error: --folder requires a path argument\n", .{});
+    //             return error.InvalidArgument;
+    //         }
+    //     }
 
-        if (std.mem.eql(u8, arg, "--no-debug")) {
-            config.debug = false;
-        }
+    //     if (std.mem.eql(u8, arg, "--output")) {
+    //         if (args.next()) |output| {
+    //             config.output = try allocator.dupe(u8, output);
+    //         } else {
+    //             print("Error: --output requires a path argument\n", .{});
+    //             return error.InvalidArgument;
+    //         }
+    //     }
 
-        if (std.mem.eql(u8, arg, "--no-run")) {
-            config.run_after_build = false;
-        }
+    //     if (std.mem.eql(u8, arg, "--clean")) {
+    //         config.clean_only = true;
+    //     }
 
-        if (std.mem.eql(u8, arg, "--no-verbose")) {
-            config.verbose = false;
-        }
+    //     if (std.mem.eql(u8, arg, "--no-debug")) {
+    //         config.debug = false;
+    //     }
 
-        if (std.mem.eql(u8, arg, "--static-library")) {
-            config.static_library = true;
-            config.executable = false;
-        }
-    }
+    //     if (std.mem.eql(u8, arg, "--no-run")) {
+    //         config.run_after_build = false;
+    //     }
+
+    //     if (std.mem.eql(u8, arg, "--no-verbose")) {
+    //         config.verbose = false;
+    //     }
+
+    //     if (std.mem.eql(u8, arg, "--static-library")) {
+    //         config.static_library = true;
+    //         config.executable = false;
+    //     }
+    // }
 
     // check if folder option which is required, exists
-    if (config.project == null) {
-        print("Error: --folder is required\n", .{});
-        print("Use --help for usage information\n", .{});
-        return error.InvalidArgument;
-    }
+    // if (config.project == null) {
+    //     print("Error: --folder is required\n", .{});
+    //     print("Use --help for usage information\n", .{});
+    //     return error.InvalidArgument;
+    // }
 
-    return config;
+    return perform;
 }
