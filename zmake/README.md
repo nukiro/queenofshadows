@@ -29,3 +29,11 @@ which zmake
 # then
 zmake --help
 ```
+
+## Commands
+
+```shell
+zmake build --folder toolkit --static-library
+zmake build --folder playground --executable
+zmake clean --folder playground
+```

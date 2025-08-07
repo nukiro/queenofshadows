@@ -2,7 +2,7 @@ const std = @import("std");
 
 // Imports
 const errors = @import("errors.zig");
-const configuration = @import("config.zig");
+const action = @import("action.zig");
 const parser = @import("parser.zig");
 
 // Aliases
@@ -10,7 +10,6 @@ const print = std.debug.print;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const BuildError = errors.BuildError;
-const Config = configuration.Config;
 
 fn findSourceFilesRecursive(allocator: Allocator, folder: []const u8, source_files: *ArrayList([]const u8)) !void {
     var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
@@ -70,7 +69,7 @@ fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const 
     return source_files;
 }
 
-fn compileLibSourceFile(allocator: Allocator, config: *const Config, source_file: []const u8) ![]const u8 {
+fn compileLibSourceFile(allocator: Allocator, config: *const action.Action, source_file: []const u8) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
     defer cmd_args.deinit();
 
@@ -148,7 +147,7 @@ fn compileLibSourceFile(allocator: Allocator, config: *const Config, source_file
     return obj_name;
 }
 
-fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: []const u8) ![]const u8 {
+fn compileSourceFile(allocator: Allocator, config: *const action.Action, source_file: []const u8) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
     defer cmd_args.deinit();
 
@@ -232,7 +231,7 @@ fn compileSourceFile(allocator: Allocator, config: *const Config, source_file: [
     return obj_name;
 }
 
-fn linkLibObjectFiles(allocator: Allocator, config: *const Config, object_files: ArrayList([]const u8)) ![]const u8 {
+fn linkLibObjectFiles(allocator: Allocator, config: *const action.Action, object_files: ArrayList([]const u8)) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
     defer cmd_args.deinit();
 
@@ -292,7 +291,7 @@ fn linkLibObjectFiles(allocator: Allocator, config: *const Config, object_files:
     return lib_path;
 }
 
-fn linkObjectFiles(allocator: Allocator, config: *const Config, object_files: ArrayList([]const u8)) ![]const u8 {
+fn linkObjectFiles(allocator: Allocator, config: *const action.Action, object_files: ArrayList([]const u8)) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
     defer cmd_args.deinit();
 
@@ -465,7 +464,7 @@ fn copy(allocator: Allocator, project_folder: []const u8) !void {
     _ = try dest_file.writeAll(source_contents);
 }
 
-fn buildStaticLibrary(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
+fn buildStaticLibrary(allocator: Allocator, config: *const action.Action, source_files: ArrayList([]const u8)) ![]const u8 {
     // hold object file names
     var object_files = ArrayList([]const u8).init(allocator);
     // clean it before leave
@@ -514,7 +513,7 @@ fn buildStaticLibrary(allocator: Allocator, config: *const Config, source_files:
     return lib_name;
 }
 
-fn buildExecutable(allocator: Allocator, config: *const Config, source_files: ArrayList([]const u8)) ![]const u8 {
+fn buildExecutable(allocator: Allocator, config: *const action.Action, source_files: ArrayList([]const u8)) ![]const u8 {
     // hold object file names
     var object_files = ArrayList([]const u8).init(allocator);
     // clean it before leave
@@ -579,7 +578,7 @@ fn runExecutable(allocator: Allocator, exe_path: []const u8, verbose: bool) !voi
     }
 }
 
-fn cleanAllArtifacts(allocator: Allocator, config: *const Config) !void {
+fn cleanAllArtifacts(allocator: Allocator, config: *const action.Action) !void {
     const project_folder = config.project.?;
 
     print("Cleaning build artifacts in: {s}\n", .{project_folder});
@@ -678,55 +677,56 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // firstly, parse command arguments and check which are required
-    var config = parser.arguments(allocator) catch {
+    var config = parser.arguments(allocator) catch |err| {
+        errors.handleError(err);
         std.process.exit(1);
     };
     defer config.deinit(allocator);
 
-    // Handle clean-only operation
-    if (config.clean_only) {
-        cleanAllArtifacts(allocator, &config) catch {
-            std.process.exit(1);
-        };
-        return;
-    }
+    // // Handle clean-only operation
+    // if (config.clean_only) {
+    //     cleanAllArtifacts(allocator, &config) catch {
+    //         std.process.exit(1);
+    //     };
+    //     return;
+    // }
 
-    // secondly, find c and h files into the source project folder
-    const source_files = findSourceFiles(allocator, config.source.?) catch {
-        std.process.exit(1);
-    };
-    defer {
-        for (source_files.items) |file| {
-            allocator.free(file);
-        }
-        source_files.deinit();
-    }
-    if (config.verbose) {
-        print("Found {d} source files:\n", .{source_files.items.len});
-        for (source_files.items) |file| {
-            print("  {s}\n", .{file});
-        }
-        print("\n", .{});
-    }
+    // // secondly, find c and h files into the source project folder
+    // const source_files = findSourceFiles(allocator, config.source.?) catch {
+    //     std.process.exit(1);
+    // };
+    // defer {
+    //     for (source_files.items) |file| {
+    //         allocator.free(file);
+    //     }
+    //     source_files.deinit();
+    // }
+    // if (config.verbose) {
+    //     print("Found {d} source files:\n", .{source_files.items.len});
+    //     for (source_files.items) |file| {
+    //         print("  {s}\n", .{file});
+    //     }
+    //     print("\n", .{});
+    // }
 
-    // thirdly, build an executable or a library
-    if (config.static_library) {
-        const lib_name = buildStaticLibrary(allocator, &config, source_files) catch {
-            std.process.exit(1);
-        };
-        defer allocator.free(lib_name);
-        return;
-    }
-    // build the exe
-    const exe_name = buildExecutable(allocator, &config, source_files) catch {
-        std.process.exit(1);
-    };
-    defer allocator.free(exe_name);
+    // // thirdly, build an executable or a library
+    // if (config.static_library) {
+    //     const lib_name = buildStaticLibrary(allocator, &config, source_files) catch {
+    //         std.process.exit(1);
+    //     };
+    //     defer allocator.free(lib_name);
+    //     return;
+    // }
+    // // build the exe
+    // const exe_name = buildExecutable(allocator, &config, source_files) catch {
+    //     std.process.exit(1);
+    // };
+    // defer allocator.free(exe_name);
 
-    // fourthly, run the executable
-    if (config.run_after_build) {
-        runExecutable(allocator, exe_name, config.verbose) catch {
-            std.process.exit(1);
-        };
-    }
+    // // fourthly, run the executable
+    // if (config.run_after_build) {
+    //     runExecutable(allocator, exe_name, config.verbose) catch {
+    //         std.process.exit(1);
+    //     };
+    // }
 }
