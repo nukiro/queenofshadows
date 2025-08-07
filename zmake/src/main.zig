@@ -1,32 +1,15 @@
 const std = @import("std");
+
+// Imports
+const errors = @import("errors.zig");
+const configuration = @import("config.zig");
+
+// Aliases
 const print = std.debug.print;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
-
-const Config = struct {
-    project: ?[]const u8 = null,
-    source: ?[]const u8 = null,
-    output: ?[]const u8 = null,
-    debug: bool = true,
-    verbose: bool = true,
-    run_after_build: bool = true,
-    clean_only: bool = false,
-    executable: bool = true,
-    static_library: bool = false,
-
-    fn deinit(self: *Config, allocator: Allocator) void {
-        if (self.project) |f| allocator.free(f);
-        if (self.source) |s| allocator.free(s);
-        if (self.output) |o| allocator.free(o);
-    }
-};
-
-const BuildError = error{
-    NoSourceFiles,
-    CompilationFailed,
-    ExecutionFailed,
-    InvalidFolder,
-};
+const BuildError = errors.BuildError;
+const Config = configuration.Config;
 
 fn printUsage() void {
     print("zmake - C Project Builder\n\n", .{});
