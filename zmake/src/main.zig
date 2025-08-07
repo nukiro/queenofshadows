@@ -3,6 +3,7 @@ const std = @import("std");
 // Imports
 const errors = @import("errors.zig");
 const configuration = @import("config.zig");
+const parser = @import("parser.zig");
 
 // Aliases
 const print = std.debug.print;
@@ -10,86 +11,6 @@ const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const BuildError = errors.BuildError;
 const Config = configuration.Config;
-
-fn printUsage() void {
-    print("zmake - C Project Builder\n\n", .{});
-    print("Usage: zmake [OPTIONS]\n\n", .{});
-    print("Options:\n", .{});
-    print("  --folder <path>     Specify the project folder (required)\n", .{});
-    print("  --clean             Clean all project artifacts\n", .{});
-    print("  --static-library    Build C static library\n", .{});
-    print("  --no-debug          Don't set debug\n", .{});
-    print("  --no-run            Don't run the program after building\n", .{});
-    print("  --no-verbose        Don't enable verbose output\n", .{});
-    print("  --help              Show this help message\n\n", .{});
-}
-
-fn parseArgs(allocator: Allocator) !Config {
-    var args = std.process.args();
-
-    var config = Config{};
-
-    _ = args.skip(); // Skip program name
-    while (args.next()) |arg| {
-        // option: help
-        if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
-            printUsage();
-            std.process.exit(0);
-        }
-
-        if (std.mem.eql(u8, arg, "--folder")) {
-            if (args.next()) |folder| {
-                config.project = try allocator.dupe(u8, folder);
-                // find source folder into the project folder
-                const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
-                defer allocator.free(source);
-                config.source = try allocator.dupe(u8, source);
-            } else {
-                print("Error: --folder requires a path argument\n", .{});
-                return error.InvalidArgument;
-            }
-        }
-
-        if (std.mem.eql(u8, arg, "--output")) {
-            if (args.next()) |output| {
-                config.output = try allocator.dupe(u8, output);
-            } else {
-                print("Error: --output requires a path argument\n", .{});
-                return error.InvalidArgument;
-            }
-        }
-
-        if (std.mem.eql(u8, arg, "--clean")) {
-            config.clean_only = true;
-        }
-
-        if (std.mem.eql(u8, arg, "--no-debug")) {
-            config.debug = false;
-        }
-
-        if (std.mem.eql(u8, arg, "--no-run")) {
-            config.run_after_build = false;
-        }
-
-        if (std.mem.eql(u8, arg, "--no-verbose")) {
-            config.verbose = false;
-        }
-
-        if (std.mem.eql(u8, arg, "--static-library")) {
-            config.static_library = true;
-            config.executable = false;
-        }
-    }
-
-    // check if folder option which is required, exists
-    if (config.project == null) {
-        print("Error: --folder is required\n", .{});
-        print("Use --help for usage information\n", .{});
-        return error.InvalidArgument;
-    }
-
-    return config;
-}
 
 fn findSourceFilesRecursive(allocator: Allocator, folder: []const u8, source_files: *ArrayList([]const u8)) !void {
     var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
@@ -757,7 +678,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // firstly, parse command arguments and check which are required
-    var config = parseArgs(allocator) catch {
+    var config = parser.arguments(allocator) catch {
         std.process.exit(1);
     };
     defer config.deinit(allocator);
