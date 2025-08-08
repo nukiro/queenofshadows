@@ -1,5 +1,4 @@
 const std = @import("std");
-const print = std.debug.print;
 const errors = @import("errors.zig");
 
 pub const BuildError = error{
@@ -13,9 +12,9 @@ pub const ParserError = error{
     InvalidCommand,
 };
 
-pub fn handleError(err: anyerror) void {
+pub fn handleError(err: anyerror, w: anytype) !void {
     switch (err) {
-        errors.ParserError.InvalidCommand => print("error in command\n", .{}),
-        else => print("something happend...\n", .{}),
+        errors.ParserError.InvalidCommand => try w.print("\n\x1b[31mError: invalid or non-existent command\x1b[0m\n", .{}),
+        else => try w.print("\n\x1b[31mError: unexpected/uncategorized error... :(\x1b[0m\n", .{}),
     }
 }

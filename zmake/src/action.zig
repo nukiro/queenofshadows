@@ -11,6 +11,8 @@ pub const Command = enum {
     build,
     clean,
 
+    // check if input fits with any command available
+    // return null if not
     pub fn serialize(input: []const u8) ?Command {
         if (eql(u8, input, "build")) {
             return Command.build;
@@ -25,7 +27,9 @@ pub const Command = enum {
 };
 
 pub const Action = struct {
-    command: Command = undefined,
+    // initialize as build command to not set it as undefined
+    // which may cause errors.
+    command: Command = .build,
     project: ?[]const u8 = null,
     source: ?[]const u8 = null,
     output: ?[]const u8 = null,

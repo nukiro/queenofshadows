@@ -3,23 +3,21 @@ const std = @import("std");
 const action = @import("action.zig");
 const helper = @import("helper.zig");
 const errors = @import("errors.zig");
-const utils = @import("utils.zig");
 
 const Allocator = std.mem.Allocator;
 
 const print = std.debug.print;
 const eql = std.mem.eql;
 
-pub fn arguments(allocator: Allocator) !action.Action {
+pub fn parser(_: Allocator) !action.Action {
     var args = std.process.args();
     _ = args.skip(); // Skip program name
 
     // == Parse Mandatory Arguments [COMMAND] ==
-    // first argument after program name (in second position)
+    // next argument after program name (in second position)
     // must be the command which will be perfomed
-    const c = try utils.lowercase(allocator, args.next().?);
-    defer allocator.free(c);
-    const command = action.Command.serialize(c) orelse return errors.ParserError.InvalidCommand;
+    const input = args.next() orelse return errors.ParserError.InvalidCommand;
+    const command = action.Command.serialize(input) orelse return errors.ParserError.InvalidCommand;
 
     // == Parse Optional Arguments [OPTIONS] ==
     const perform = action.Action.init(command);
