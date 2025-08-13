@@ -1,16 +1,23 @@
 const std = @import("std");
 
-const print = std.debug.print;
+pub fn menu(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
+    var buffer = std.ArrayList(u8).init(allocator);
+    defer buffer.deinit();
 
-pub fn menu() void {
-    print("zmake - C Project Builder\n\n", .{});
-    print("Usage: zmake [OPTIONS]\n\n", .{});
-    print("Options:\n", .{});
-    print("  --folder <path>     Specify the project folder (required)\n", .{});
-    print("  --clean             Clean all project artifacts\n", .{});
-    print("  --static-library    Build C static library\n", .{});
-    print("  --no-debug          Don't set debug\n", .{});
-    print("  --no-run            Don't run the program after building\n", .{});
-    print("  --no-verbose        Don't enable verbose output\n", .{});
-    print("  --help              Show this help message\n\n", .{});
+    const w = buffer.writer();
+
+    // add help menu to the buffer writer
+    try w.writeAll("zmake - C Project Builder\n\n");
+    try w.writeAll("Usage: zmake [OPTIONS]\n\n");
+    try w.writeAll("Options:\n");
+    try w.writeAll("  --folder <path>     Specify the project folder (required)\n");
+    try w.writeAll("  --clean             Clean all project artifacts\n");
+    try w.writeAll("  --static-library    Build C static library\n");
+    try w.writeAll("  --no-debug          Don't set debug\n");
+    try w.writeAll("  --no-run            Don't run the program after building\n");
+    try w.writeAll("  --no-verbose        Don't enable verbose output\n");
+    try w.writeAll("  --help              Show this help message\n\n");
+
+    // throw it to the terminal
+    try writer.writeAll(buffer.items);
 }

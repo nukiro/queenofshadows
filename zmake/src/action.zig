@@ -10,6 +10,7 @@ const eql = std.mem.eql;
 pub const Command = enum {
     build,
     clean,
+    help,
 
     // check if input fits with any command available
     // return null if not
@@ -22,14 +23,26 @@ pub const Command = enum {
             return Command.clean;
         }
 
+        if (eql(u8, input, "help")) {
+            return Command.help;
+        }
+
         return null;
+    }
+
+    pub fn toString(self: Command) []const u8 {
+        return switch (self) {
+            .build => "BUILD",
+            .clean => "CLEAN",
+            .help => "HELP",
+        };
     }
 };
 
 pub const Action = struct {
     // initialize as build command to not set it as undefined
     // which may cause errors.
-    command: Command = .build,
+    command: Command = .help,
     project: ?[]const u8 = null,
     source: ?[]const u8 = null,
     output: ?[]const u8 = null,

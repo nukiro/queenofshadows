@@ -673,14 +673,12 @@ fn cleanAllArtifacts(allocator: Allocator, config: *const action.Action) !void {
 
 pub fn main() !u8 {
     const w = std.io.getStdOut().writer();
-    try w.print("Running zmake...\n", .{});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // firstly, parse command arguments and check required ones
-    var config = parser.parser(allocator) catch |err| {
+    // firstly, parse command arguments and check required ones exist
+    var config = parser.parser(allocator, w) catch |err| {
         try errors.handleError(err, w);
         std.process.exit(1);
     };
@@ -733,5 +731,6 @@ pub fn main() !u8 {
     //     };
     // }
 
+    try w.writeAll("\n");
     return 0;
 }
