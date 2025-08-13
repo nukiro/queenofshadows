@@ -1,10 +1,8 @@
 const std = @import("std");
 
-const helper = @import("helper.zig");
 const errors = @import("errors.zig");
 
 const Allocator = std.mem.Allocator;
-
 const eql = std.mem.eql;
 
 pub const Command = enum {
@@ -25,7 +23,7 @@ pub const Command = enum {
             return Command.clean;
         }
 
-        if (eql(u8, c, "help")) {
+        if (eql(u8, c, "help") or eql(u8, c, "--help")) {
             return Command.help;
         }
 

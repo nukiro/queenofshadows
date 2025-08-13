@@ -6,8 +6,14 @@ const errors = @import("errors.zig");
 
 const Allocator = std.mem.Allocator;
 
-const print = std.debug.print;
 const eql = std.mem.eql;
+
+fn validate(perform: *action.Action) !void {
+    // check if all required options exists
+    if (perform.project == null) {
+        return errors.ParserError.InvalidFolder;
+    }
+}
 
 fn parseFolder(perform: *action.Action, allocator: std.mem.Allocator, args: *std.process.ArgIterator) !void {
     if (args.next()) |folder| {
@@ -24,11 +30,11 @@ fn parseFolder(perform: *action.Action, allocator: std.mem.Allocator, args: *std
 fn parseBuild(perform: *action.Action, allocator: std.mem.Allocator, args: *std.process.ArgIterator) !void {
     while (args.next()) |arg| {
         // folder argument (required)
-        if (std.mem.eql(u8, arg, "--folder")) {
+        if (eql(u8, arg, "--folder")) {
             try parseFolder(perform, allocator, args);
         }
 
-        if (std.mem.eql(u8, arg, "--output")) {
+        if (eql(u8, arg, "--output")) {
             if (args.next()) |output| {
                 perform.output = try allocator.dupe(u8, output);
             } else {
@@ -36,36 +42,40 @@ fn parseBuild(perform: *action.Action, allocator: std.mem.Allocator, args: *std.
             }
         }
 
-        if (std.mem.eql(u8, arg, "--no-debug")) {
+        if (eql(u8, arg, "--no-debug")) {
             perform.debug = false;
         }
 
-        if (std.mem.eql(u8, arg, "--no-run")) {
+        if (eql(u8, arg, "--no-run")) {
             perform.run_after_build = false;
         }
 
-        if (std.mem.eql(u8, arg, "--no-verbose")) {
+        if (eql(u8, arg, "--no-verbose")) {
             perform.verbose = false;
         }
 
-        if (std.mem.eql(u8, arg, "--static-library")) {
+        if (eql(u8, arg, "--static-library")) {
             perform.static_library = true;
             perform.executable = false;
         }
     }
+
+    try validate(perform);
 }
 
 fn parseClean(perform: *action.Action, allocator: std.mem.Allocator, args: *std.process.ArgIterator) !void {
     while (args.next()) |arg| {
         // folder argument (required)
-        if (std.mem.eql(u8, arg, "--folder")) {
+        if (eql(u8, arg, "--folder")) {
             try parseFolder(perform, allocator, args);
         }
 
-        if (std.mem.eql(u8, arg, "--no-verbose")) {
+        if (eql(u8, arg, "--no-verbose")) {
             perform.verbose = false;
         }
     }
+
+    try validate(perform);
 }
 
 pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
@@ -76,19 +86,23 @@ pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
 
     // == Parse Mandatory Arguments [COMMAND] ==
     // next argument after program name must be the command which will be perfomed
-    const command = action.Command.serialize(args.next()) orelse return errors.ParserError.InvalidCommand;
+    const command = action.Command.serialize(args.next()) orelse {
+        try helper.main(allocator, writer, .help);
+        return errors.ParserError.InvalidCommand;
+    };
     perform.command = command;
 
     // == Parse Optional Arguments [OPTIONS] by command ==
     switch (perform.command) {
-        .help => try helper.menu(allocator, writer),
-        .build => try parseBuild(&perform, allocator, &args),
-        .clean => try parseClean(&perform, allocator, &args),
-    }
-
-    // check if all required options exists
-    if (perform.project == null) {
-        return errors.ParserError.InvalidFolder;
+        .help => try helper.main(allocator, writer, .help),
+        .build => parseBuild(&perform, allocator, &args) catch |err| {
+            try helper.main(allocator, writer, .build);
+            return err;
+        },
+        .clean => parseClean(&perform, allocator, &args) catch |err| {
+            try helper.main(allocator, writer, .clean);
+            return err;
+        },
     }
 
     return perform;
