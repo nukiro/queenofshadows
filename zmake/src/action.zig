@@ -14,16 +14,18 @@ pub const Command = enum {
 
     // check if input fits with any command available
     // return null if not
-    pub fn serialize(input: []const u8) ?Command {
-        if (eql(u8, input, "build")) {
+    pub fn serialize(input: ?[]const u8) ?Command {
+        const c = input orelse return null;
+
+        if (eql(u8, c, "build")) {
             return Command.build;
         }
 
-        if (eql(u8, input, "clean")) {
+        if (eql(u8, c, "clean")) {
             return Command.clean;
         }
 
-        if (eql(u8, input, "help")) {
+        if (eql(u8, c, "help")) {
             return Command.help;
         }
 
@@ -53,8 +55,14 @@ pub const Action = struct {
     executable: bool = true,
     static_library: bool = false,
 
-    pub fn init(command: Command) Action {
-        return Action{ .command = command };
+    const Self = @This();
+
+    pub fn init() Action {
+        return Action{};
+    }
+
+    pub fn setCommand(self: *Self, command: Command) void {
+        self.command = command;
     }
 
     pub fn deinit(self: *Action, allocator: Allocator) void {

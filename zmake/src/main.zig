@@ -679,7 +679,7 @@ pub fn main() !u8 {
 
     // firstly, parse command arguments and check required ones exist
     var config = parser.parser(allocator, w) catch |err| {
-        try errors.handleError(err, w);
+        try errors.handleError(allocator, err, w);
         std.process.exit(1);
     };
     defer config.deinit(allocator);
@@ -731,6 +731,5 @@ pub fn main() !u8 {
     //     };
     // }
 
-    try w.writeAll("\n");
     return 0;
 }

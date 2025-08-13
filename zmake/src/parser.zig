@@ -13,14 +13,15 @@ pub fn parser(_: Allocator, _: std.fs.File.Writer) !action.Action {
     var args = std.process.args();
     _ = args.skip(); // Skip program name
 
+    var perform = action.Action.init();
+
     // == Parse Mandatory Arguments [COMMAND] ==
-    // next argument after program name (in second position)
-    // must be the command which will be perfomed
-    const input = args.next() orelse return errors.ParserError.InvalidCommand;
-    const command = action.Command.serialize(input) orelse return errors.ParserError.InvalidCommand;
+    // next argument after program name must be the command which will be perfomed
+    const command = action.Command.serialize(args.next()) orelse return errors.ParserError.InvalidCommand;
 
     // == Parse Optional Arguments [OPTIONS] ==
-    const perform = action.Action.init(command);
+    // const perform = action.Action.init(command);
+    perform.setCommand(command);
     // while (args.next()) |arg| {
     // option: help
     // if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
