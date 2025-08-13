@@ -7,8 +7,7 @@ pub fn menu(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
     const w = buffer.writer();
 
     // add help menu to the buffer writer
-    try w.writeAll("zmake - C Project Builder\n\n");
-    try w.writeAll("Usage: zmake [OPTIONS]\n\n");
+    try w.writeAll("Usage: zmake [COMMAND] [OPTIONS]\n\n");
     try w.writeAll("Options:\n");
     try w.writeAll("  --folder <path>     Specify the project folder (required)\n");
     try w.writeAll("  --clean             Clean all project artifacts\n");

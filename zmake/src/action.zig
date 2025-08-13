@@ -61,10 +61,6 @@ pub const Action = struct {
         return Action{};
     }
 
-    pub fn setCommand(self: *Self, command: Command) void {
-        self.command = command;
-    }
-
     pub fn deinit(self: *Action, allocator: Allocator) void {
         if (self.project) |f| allocator.free(f);
         if (self.source) |s| allocator.free(s);

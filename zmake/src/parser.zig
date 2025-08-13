@@ -9,7 +9,66 @@ const Allocator = std.mem.Allocator;
 const print = std.debug.print;
 const eql = std.mem.eql;
 
-pub fn parser(_: Allocator, _: std.fs.File.Writer) !action.Action {
+fn parseFolder(perform: *action.Action, allocator: std.mem.Allocator, args: *std.process.ArgIterator) !void {
+    if (args.next()) |folder| {
+        perform.project = try allocator.dupe(u8, folder);
+        // find source folder into the project folder
+        const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
+        defer allocator.free(source);
+        perform.source = try allocator.dupe(u8, source);
+    } else {
+        return errors.ParserError.InvalidFolderPath;
+    }
+}
+
+fn parseBuild(perform: *action.Action, allocator: std.mem.Allocator, args: *std.process.ArgIterator) !void {
+    while (args.next()) |arg| {
+        // folder argument (required)
+        if (std.mem.eql(u8, arg, "--folder")) {
+            try parseFolder(perform, allocator, args);
+        }
+
+        if (std.mem.eql(u8, arg, "--output")) {
+            if (args.next()) |output| {
+                perform.output = try allocator.dupe(u8, output);
+            } else {
+                return errors.ParserError.InvalidOutputPath;
+            }
+        }
+
+        if (std.mem.eql(u8, arg, "--no-debug")) {
+            perform.debug = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--no-run")) {
+            perform.run_after_build = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--no-verbose")) {
+            perform.verbose = false;
+        }
+
+        if (std.mem.eql(u8, arg, "--static-library")) {
+            perform.static_library = true;
+            perform.executable = false;
+        }
+    }
+}
+
+fn parseClean(perform: *action.Action, allocator: std.mem.Allocator, args: *std.process.ArgIterator) !void {
+    while (args.next()) |arg| {
+        // folder argument (required)
+        if (std.mem.eql(u8, arg, "--folder")) {
+            try parseFolder(perform, allocator, args);
+        }
+
+        if (std.mem.eql(u8, arg, "--no-verbose")) {
+            perform.verbose = false;
+        }
+    }
+}
+
+pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
     var args = std.process.args();
     _ = args.skip(); // Skip program name
 
@@ -18,68 +77,19 @@ pub fn parser(_: Allocator, _: std.fs.File.Writer) !action.Action {
     // == Parse Mandatory Arguments [COMMAND] ==
     // next argument after program name must be the command which will be perfomed
     const command = action.Command.serialize(args.next()) orelse return errors.ParserError.InvalidCommand;
+    perform.command = command;
 
-    // == Parse Optional Arguments [OPTIONS] ==
-    // const perform = action.Action.init(command);
-    perform.setCommand(command);
-    // while (args.next()) |arg| {
-    // option: help
-    // if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
-    //     try helper.menu(allocator, writer);
-    //     std.process.exit(0);
-    // }
+    // == Parse Optional Arguments [OPTIONS] by command ==
+    switch (perform.command) {
+        .help => try helper.menu(allocator, writer),
+        .build => try parseBuild(&perform, allocator, &args),
+        .clean => try parseClean(&perform, allocator, &args),
+    }
 
-    // if (std.mem.eql(u8, arg, "--folder")) {
-    //     if (args.next()) |folder| {
-    //         config.project = try allocator.dupe(u8, folder);
-    //         // find source folder into the project folder
-    //         const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
-    //         defer allocator.free(source);
-    //         config.source = try allocator.dupe(u8, source);
-    //     } else {
-    //         print("Error: --folder requires a path argument\n", .{});
-    //         return error.InvalidArgument;
-    //     }
-    // }
+    // check if all required options exists
+    if (perform.project == null) {
+        return errors.ParserError.InvalidFolder;
+    }
 
-    // if (std.mem.eql(u8, arg, "--output")) {
-    //     if (args.next()) |output| {
-    //         config.output = try allocator.dupe(u8, output);
-    //     } else {
-    //         print("Error: --output requires a path argument\n", .{});
-    //         return error.InvalidArgument;
-    //     }
-    // }
-
-    // if (std.mem.eql(u8, arg, "--clean")) {
-    //     config.clean_only = true;
-    // }
-
-    // if (std.mem.eql(u8, arg, "--no-debug")) {
-    //     config.debug = false;
-    // }
-
-    // if (std.mem.eql(u8, arg, "--no-run")) {
-    //     config.run_after_build = false;
-    // }
-
-    // if (std.mem.eql(u8, arg, "--no-verbose")) {
-    //     config.verbose = false;
-    // }
-
-    // if (std.mem.eql(u8, arg, "--static-library")) {
-    //     config.static_library = true;
-    //     config.executable = false;
-    // }
-    // }
-
-    // check if folder option which is required, exists
-    // if (config.project == null) {
-    //     print("Error: --folder is required\n", .{});
-    //     print("Use --help for usage information\n", .{});
-    //     return error.InvalidArgument;
-    // }
-
-    // try writer.print("Command: {s}", .{perform.command.toString()});
     return perform;
 }
