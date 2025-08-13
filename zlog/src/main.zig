@@ -11,6 +11,7 @@ pub fn GenericLogger(comptime WriterType: type) type {
     return struct {
         allocator: Allocator,
         writer: WriterType,
+        mutex: std.Thread.Mutex = .{},
 
         const Self = @This();
 
@@ -22,6 +23,9 @@ pub fn GenericLogger(comptime WriterType: type) type {
         }
 
         pub fn write(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
             var buffer = ArrayList(u8).init(self.allocator);
             defer buffer.deinit();
 
