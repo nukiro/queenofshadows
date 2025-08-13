@@ -7,50 +7,46 @@ const temporal = @import("temporal");
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 
-fn write(logger: Logger, comptime fmt: []const u8, args: anytype) !void {
-    var buffer = ArrayList(u8).init(logger.allocator);
-    defer buffer.deinit();
+pub fn GenericLogger(comptime WriterType: type) type {
+    return struct {
+        allocator: Allocator,
+        writer: WriterType,
 
-    const writer = buffer.writer();
+        const Self = @This();
 
-    // datetime
-    const dt = temporal.DateTime.now();
-    // Print it
-    try writer.print(
-        "[{}] ",
-        .{dt},
-    );
+        pub fn init(allocator: Allocator, writer: WriterType) Self {
+            return Self{
+                .allocator = allocator,
+                .writer = writer,
+            };
+        }
 
-    try writer.print(fmt, args);
-    try writer.writeAll("\n");
-    // Write to output
-    try std.io.getStdOut().writer().writeAll(buffer.items);
+        pub fn write(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            var buffer = ArrayList(u8).init(self.allocator);
+            defer buffer.deinit();
+
+            const w = buffer.writer();
+
+            const dt = temporal.DateTime.now();
+            try w.print("{} ", .{dt});
+
+            // Add the actual message
+            try w.print(fmt, args);
+
+            try w.writeAll("\n");
+
+            // Write directly to the stored writer
+            try self.writer.writeAll(buffer.items);
+        }
+    };
 }
 
-const Logger = struct {
-    allocator: Allocator,
-
-    pub fn init(allocator: Allocator) Logger {
-        return Logger{ .allocator = allocator };
-    }
-
-    pub fn debug(self: Logger, comptime fmt: []const u8, args: anytype) !void {
-        try write(self, fmt, args);
-    }
-};
-
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
-    try stdout.print("Hello World\n", .{});
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const logger = Logger.init(allocator);
-    try logger.debug("hello {s}", .{"world"});
-    // try stdout.print("{d}\n", .{logger.attributes.number});
+    const stdout = std.io.getStdOut().writer();
+    var logger = GenericLogger(std.fs.File.Writer).init(allocator, stdout);
 
-    const ts = std.time.milliTimestamp();
-    const dt = temporal.DateTime.from(ts);
-    try stdout.print("Unix millis: {} -> {}\n", .{ ts, dt });
+    try logger.write("Hello World", .{});
 }
