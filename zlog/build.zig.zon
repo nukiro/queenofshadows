@@ -3,7 +3,11 @@
     .version = "0.1.0",
     .fingerprint = 0x55b82e338037d8db,
     .minimum_zig_version = "0.14.1",
-    .dependencies = .{},
+    .dependencies = .{
+        .temporal = .{
+            .path = "../ztemporal", // Local path
+        },
+    },
     .paths = .{
         "build.zig",
         "build.zig.zon",

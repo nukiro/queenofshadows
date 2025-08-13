@@ -17,6 +17,10 @@ pub fn main() !void {
     const n = lib.add(1, 2);
     try stdout.print("{d}", .{n});
 
+    const ts = std.time.milliTimestamp();
+    const dt = temporal.DateTime.from(ts);
+    try stdout.print("Unix millis: {} -> {}\n", .{ ts, dt });
+
     try bw.flush(); // Don't forget to flush!
 }
 
@@ -46,3 +50,5 @@ const std = @import("std");
 
 /// This imports the separate module containing `root.zig`. Take a look in `build.zig` for details.
 const lib = @import("zlog_lib");
+
+const temporal = @import("temporal");
