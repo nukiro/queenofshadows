@@ -22,7 +22,7 @@ pub fn GenericLogger(comptime WriterType: type) type {
             };
         }
 
-        pub fn write(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+        pub fn write(self: *Self, comptime level: []const u8, comptime fmt: []const u8, args: anytype) !void {
             self.mutex.lock();
             defer self.mutex.unlock();
 
@@ -32,7 +32,11 @@ pub fn GenericLogger(comptime WriterType: type) type {
             const w = buffer.writer();
 
             const dt = temporal.DateTime.now();
-            try w.print("{} ", .{dt});
+            try w.print("{}\t", .{dt});
+
+            // Add the level
+            try w.writeAll(level);
+            try w.writeAll("\t");
 
             // Add the actual message
             try w.print(fmt, args);
@@ -41,6 +45,26 @@ pub fn GenericLogger(comptime WriterType: type) type {
 
             // Write directly to the stored writer
             try self.writer.writeAll(buffer.items);
+        }
+
+        pub fn debug(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            try self.write("\x1b[4mDEBUG\x1b[0m", fmt, args);
+        }
+
+        pub fn info(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            try self.write("\x1b[32mINFO\x1b[0m", fmt, args);
+        }
+
+        pub fn warn(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            try self.write("\x1b[33mWARN\x1b[0m", fmt, args);
+        }
+
+        pub fn err(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            try self.write("\x1b[31mERROR\x1b[0m", fmt, args);
+        }
+
+        pub fn fatal(self: *Self, comptime fmt: []const u8, args: anytype) !void {
+            try self.write("\x1b[35mFATAL\x1b[0m", fmt, args);
         }
     };
 }
@@ -52,5 +76,9 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     var logger = GenericLogger(std.fs.File.Writer).init(allocator, stdout);
 
-    try logger.write("Hello World", .{});
+    try logger.debug("This is a {s} message", .{"DEBUG"});
+    try logger.info("This is a {s} message", .{"INFO"});
+    try logger.warn("This is a {s} message", .{"WARN"});
+    try logger.err("This is a {s} message", .{"ERROR"});
+    try logger.fatal("This is a {s} message", .{"FATAL"});
 }
