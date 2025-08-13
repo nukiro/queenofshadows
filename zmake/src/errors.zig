@@ -1,29 +1,12 @@
 const std = @import("std");
-const errors = @import("errors.zig");
-const helper = @import("helper.zig");
 
-pub const BuildError = error{
-    NoSourceFiles,
-    CompilationFailed,
-    ExecutionFailed,
-    InvalidFolder,
+pub const List = error{
+    BuildNoSourceFiles,
+    BuildCompilationFailed,
+    BuildExecutionFailed,
+    BuildInvalidFolder,
+    ParserInvalidCommand,
+    ParserInvalidFolder,
+    ParserInvalidFolderPath,
+    ParserInvalidOutputPath,
 };
-
-pub const ParserError = error{
-    InvalidCommand,
-    InvalidFolder,
-    InvalidFolderPath,
-    InvalidOutputPath,
-};
-
-pub fn handleError(err: anyerror, w: std.fs.File.Writer) !void {
-    switch (err) {
-        errors.ParserError.InvalidCommand => try w.writeAll("\x1b[1;31m✖ Error: invalid or non-existent command.\x1b[0m\n"),
-        errors.ParserError.InvalidFolder => try w.writeAll("\x1b[1;31m✖ Error: invalid or non-existent folder.\x1b[0m\n"),
-        errors.ParserError.InvalidFolderPath => try w.writeAll("\x1b[1;31m✖ Error: --folder requires a path argument.\x1b[0m\n"),
-        errors.ParserError.InvalidOutputPath => try w.writeAll("\x1b[1;31m✖ Error: --output requires an argument.\x1b[0m\n"),
-        else => try w.writeAll("\x1b[1;31m✖ Error: unexpected/uncategorized error... :(\x1b[0m\n"),
-    }
-
-    try w.writeAll("\n");
-}

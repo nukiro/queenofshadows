@@ -2,72 +2,17 @@ const std = @import("std");
 
 // Imports
 const errors = @import("errors.zig");
+const helper = @import("helper.zig");
+const handler = @import("handler.zig");
 const action = @import("action.zig");
 const parser = @import("parser.zig");
+const builder = @import("builder.zig");
 
 // Aliases
 const print = std.debug.print;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const BuildError = errors.BuildError;
-
-fn findSourceFilesRecursive(allocator: Allocator, folder: []const u8, source_files: *ArrayList([]const u8)) !void {
-    var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
-        error.FileNotFound => return,
-        else => return err,
-    };
-    defer dir.close();
-
-    var iterator = dir.iterate();
-    while (try iterator.next()) |entry| {
-        if (entry.kind == .file) {
-            const name = entry.name;
-            if (std.mem.endsWith(u8, name, ".c")) {
-                const full_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ folder, name });
-                try source_files.append(full_path);
-            }
-        } else if (entry.kind == .directory) {
-            // Skip common non-source directories
-            if (std.mem.eql(u8, entry.name, "obj") or
-                std.mem.eql(u8, entry.name, "build") or
-                std.mem.eql(u8, entry.name, "bin") or
-                std.mem.eql(u8, entry.name, ".git") or
-                std.mem.eql(u8, entry.name, ".vscode") or
-                std.mem.eql(u8, entry.name, "node_modules"))
-            {
-                continue;
-            }
-
-            // Recursively search subdirectories
-            const sub_folder = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ folder, entry.name });
-            defer allocator.free(sub_folder);
-            try findSourceFilesRecursive(allocator, sub_folder, source_files);
-        }
-    }
-}
-
-fn findSourceFiles(allocator: Allocator, folder: []const u8) !ArrayList([]const u8) {
-    var source_files = ArrayList([]const u8).init(allocator);
-
-    var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
-        error.FileNotFound => {
-            print("Error: Folder '{s}' not found\n", .{folder});
-            return BuildError.InvalidFolder;
-        },
-        else => return err,
-    };
-    defer dir.close();
-
-    // Recursively find all .c files
-    try findSourceFilesRecursive(allocator, folder, &source_files);
-
-    if (source_files.items.len == 0) {
-        print("Error: No .c files found in folder '{s}'\n", .{folder});
-        return BuildError.NoSourceFiles;
-    }
-
-    return source_files;
-}
 
 fn compileLibSourceFile(allocator: Allocator, config: *const action.Action, source_file: []const u8) ![]const u8 {
     var cmd_args = ArrayList([]const u8).init(allocator);
@@ -678,11 +623,21 @@ pub fn main() !u8 {
     const allocator = gpa.allocator();
 
     // firstly, parse command arguments and check required ones exist
-    var config = parser.parser(allocator, w) catch |err| {
-        try errors.handleError(err, w);
+    var perform = parser.parser(allocator, w) catch |err| {
+        try handler.errors(err, w, .{});
         std.process.exit(1);
     };
-    defer config.deinit(allocator);
+    defer perform.deinit(allocator);
+
+    // process regarding action
+    switch (perform.command) {
+        .build => builder.main(allocator, w, perform) catch |err| {
+            try handler.errors(err, w, perform);
+            std.process.exit(1);
+        },
+        .clean => {},
+        .help => try helper.main(allocator, w, .help),
+    }
 
     // // Handle clean-only operation
     // if (config.clean_only) {

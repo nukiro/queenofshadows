@@ -11,7 +11,7 @@ const eql = std.mem.eql;
 fn validate(perform: *action.Action) !void {
     // check if all required options exists
     if (perform.project == null) {
-        return errors.ParserError.InvalidFolder;
+        return errors.List.ParserInvalidFolder;
     }
 }
 
@@ -23,7 +23,7 @@ fn parseFolder(perform: *action.Action, allocator: std.mem.Allocator, args: *std
         defer allocator.free(source);
         perform.source = try allocator.dupe(u8, source);
     } else {
-        return errors.ParserError.InvalidFolderPath;
+        return errors.List.ParserInvalidFolderPath;
     }
 }
 
@@ -38,7 +38,7 @@ fn parseBuild(perform: *action.Action, allocator: std.mem.Allocator, args: *std.
             if (args.next()) |output| {
                 perform.output = try allocator.dupe(u8, output);
             } else {
-                return errors.ParserError.InvalidOutputPath;
+                return errors.List.ParserInvalidOutputPath;
             }
         }
 
@@ -88,13 +88,12 @@ pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
     // next argument after program name must be the command which will be perfomed
     const command = action.Command.serialize(args.next()) orelse {
         try helper.main(allocator, writer, .help);
-        return errors.ParserError.InvalidCommand;
+        return errors.List.ParserInvalidCommand;
     };
     perform.command = command;
 
     // == Parse Optional Arguments [OPTIONS] by command ==
     switch (perform.command) {
-        .help => try helper.main(allocator, writer, .help),
         .build => parseBuild(&perform, allocator, &args) catch |err| {
             try helper.main(allocator, writer, .build);
             return err;
@@ -103,6 +102,7 @@ pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
             try helper.main(allocator, writer, .clean);
             return err;
         },
+        .help => {}, // do nothing
     }
 
     return perform;

@@ -2,7 +2,11 @@ const std = @import("std");
 
 const action = @import("action.zig");
 
-pub fn main(allocator: std.mem.Allocator, writer: std.fs.File.Writer, command: action.Command) !void {
+// Aliases
+const Allocator = std.mem.Allocator;
+const Writer = std.fs.File.Writer;
+
+pub fn main(allocator: Allocator, writer: Writer, command: action.Command) !void {
     switch (command) {
         .help => try help(allocator, writer),
         .build => try build(allocator, writer),
@@ -10,7 +14,7 @@ pub fn main(allocator: std.mem.Allocator, writer: std.fs.File.Writer, command: a
     }
 }
 
-fn help(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
+fn help(allocator: Allocator, writer: Writer) !void {
     var buffer = std.ArrayList(u8).init(allocator);
     defer buffer.deinit();
 
@@ -34,7 +38,7 @@ fn help(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
     try writer.writeAll(buffer.items);
 }
 
-fn build(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
+fn build(allocator: Allocator, writer: Writer) !void {
     var buffer = std.ArrayList(u8).init(allocator);
     defer buffer.deinit();
 
@@ -62,7 +66,7 @@ fn build(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
     try writer.writeAll(buffer.items);
 }
 
-fn clean(allocator: std.mem.Allocator, writer: std.fs.File.Writer) !void {
+fn clean(allocator: Allocator, writer: Writer) !void {
     var buffer = std.ArrayList(u8).init(allocator);
     defer buffer.deinit();
 
