@@ -28,6 +28,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // Create the public module
+    _ = b.addModule("ztemporal", .{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
         // `root_source_file` is the Zig "entry point" of the module. If a module
