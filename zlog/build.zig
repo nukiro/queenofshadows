@@ -4,16 +4,14 @@ const std = @import("std");
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) void {
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
-
-    // Standard optimization options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-    // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
+
+    // Get the temporal dependency
+    const temporal_dep = b.dependency("temporal", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     // This creates a "module", which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
@@ -23,13 +21,6 @@ pub fn build(b: *std.Build) void {
         // only contains e.g. external object files, you can make this `null`.
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    // Create the public module
-    _ = b.addModule("ztemporal", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
@@ -49,14 +40,14 @@ pub fn build(b: *std.Build) void {
     // Modules can depend on one another using the `std.Build.Module.addImport` function.
     // This is what allows Zig source code to use `@import("foo")` where 'foo' is not a
     // file path. In this case, we set up `exe_mod` to import `lib_mod`.
-    exe_mod.addImport("ztemporal_lib", lib_mod);
+    exe_mod.addImport("zlog_lib", lib_mod);
 
     // Now, we will create a static library based on the module we created above.
     // This creates a `std.Build.Step.Compile`, which is the build step responsible
     // for actually invoking the compiler.
     const lib = b.addLibrary(.{
         .linkage = .static,
-        .name = "ztemporal",
+        .name = "zlog",
         .root_module = lib_mod,
     });
 
@@ -68,9 +59,12 @@ pub fn build(b: *std.Build) void {
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
     const exe = b.addExecutable(.{
-        .name = "ztemporal",
+        .name = "zlog",
         .root_module = exe_mod,
     });
+
+    // Add the temporal module to your executable
+    exe.root_module.addImport("temporal", temporal_dep.module("ztemporal"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
