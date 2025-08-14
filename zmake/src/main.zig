@@ -624,7 +624,7 @@ pub fn main() !u8 {
 
     // firstly, parse command arguments and check required ones exist
     var perform = parser.parser(allocator, w) catch |err| {
-        try handler.errors(err, w, .{});
+        try handler.errors(err, w, null);
         std.process.exit(1);
     };
     defer perform.deinit(allocator);

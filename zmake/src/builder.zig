@@ -10,7 +10,24 @@ const Allocator = std.mem.Allocator;
 const Writer = std.fs.File.Writer;
 const ArrayList = std.ArrayList;
 
-pub fn main(allocator: Allocator, _: Writer, perform: action.Action) !void {
+fn summary(allocator: Allocator, writer: Writer, perform: action.Action) !void {
+    var buffer = std.ArrayList(u8).init(allocator);
+    defer buffer.deinit();
+
+    const w = buffer.writer();
+
+    try w.print("Command\t{s}\n", .{perform.command.toString()});
+    try w.print("Project\t{s}\n", .{perform.project.?});
+    // try w.print("Source\t{s}\n", .{perform.source.?});
+    // try w.print("Output\t{s}\n", .{perform.output.?});
+    try w.writeAll("\n");
+
+    // throw it to the terminal
+    try writer.writeAll(buffer.items);
+}
+
+pub fn main(allocator: Allocator, writer: Writer, perform: action.Action) !void {
+    try summary(allocator, writer, perform);
     // find c and h files within the source project folder
     const files = findSourceFiles(allocator, perform.source.?) catch |err| {
         return err;

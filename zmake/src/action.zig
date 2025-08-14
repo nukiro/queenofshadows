@@ -39,6 +39,27 @@ pub const Command = enum {
     }
 };
 
+pub const Build = struct {
+    folder: []u8,
+    output: []u8,
+    executable: bool,
+
+    const Self = @This();
+
+    pub fn init(allocator: Allocator) !Self {
+        return Self{
+            .folder = try allocator.dupe(u8, "."),
+            .output = try allocator.dupe(u8, "main"),
+            .executable = true,
+        };
+    }
+
+    pub fn deinit(self: *Self, allocator: Allocator) void {
+        allocator.free(self.folder);
+        allocator.free(self.output);
+    }
+};
+
 pub const Action = struct {
     // initialize as build command to not set it as undefined
     // which may cause errors.
@@ -48,20 +69,20 @@ pub const Action = struct {
     output: ?[]const u8 = null,
     debug: bool = true,
     verbose: bool = true,
+    // command specific options
+    build: Build,
     run_after_build: bool = true,
-    clean_only: bool = false,
-    executable: bool = true,
     static_library: bool = false,
+    executable: bool = true,
 
     const Self = @This();
 
-    pub fn init() Action {
-        return Action{};
+    pub fn init(allocator: Allocator) !Action {
+        return Action{ .build = try Build.init(allocator) };
     }
 
     pub fn deinit(self: *Action, allocator: Allocator) void {
         if (self.project) |f| allocator.free(f);
-        if (self.source) |s| allocator.free(s);
-        if (self.output) |o| allocator.free(o);
+        self.build.deinit(allocator);
     }
 };
