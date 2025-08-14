@@ -19,7 +19,7 @@ fn parseFolder(allocator: std.mem.Allocator, perform: *action.Action, args: *std
 
 fn parseBuild(allocator: std.mem.Allocator, perform: *action.Action, args: *std.process.ArgIterator) !void {
     // init build structure
-    var build = try action.Build.init(allocator);
+    var builder = try action.Builder.init(allocator);
 
     // parse arguments
     while (args.next()) |arg| {
@@ -34,26 +34,34 @@ fn parseBuild(allocator: std.mem.Allocator, perform: *action.Action, args: *std.
         // specific arguments
         if (eql(u8, arg, "--output")) {
             if (args.next()) |output| {
-                build.output = try allocator.dupe(u8, output);
+                builder.output = try allocator.dupe(u8, output);
             } else {
                 return error.ParserInvalidOutputPath;
             }
         }
 
+        if (eql(u8, arg, "--source")) {
+            if (args.next()) |source| {
+                builder.source = try allocator.dupe(u8, source);
+            } else {
+                return error.ParserInvalidSourcePath;
+            }
+        }
+
         if (eql(u8, arg, "--no-debug")) {
-            build.debug = false;
+            builder.debug = false;
         }
 
         if (eql(u8, arg, "--library")) {
-            build.executable = false;
+            builder.executable = false;
         }
 
         if (eql(u8, arg, "--no-run")) {
-            build.run = false;
+            builder.run = false;
         }
     }
 
-    perform.build = build;
+    perform.builder = builder;
 }
 
 fn parseClean(allocator: std.mem.Allocator, perform: *action.Action, args: *std.process.ArgIterator) !void {

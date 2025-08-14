@@ -9,4 +9,5 @@ pub const _ = error{
     ParserInvalidFolder,
     ParserInvalidFolderPath,
     ParserInvalidOutputPath,
+    ParserInvalidSourcePath,
 };

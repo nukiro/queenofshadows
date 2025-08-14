@@ -24,3 +24,15 @@ test "utils -> lowercase: converts uppercase letters to lowercase" {
 
     try std.testing.expectEqualStrings("hello", result);
 }
+
+pub fn createDirectory(folder: []const u8, writer: std.fs.File.Writer) !void {
+    std.fs.cwd().makeDir(folder) catch |err| switch (err) {
+        error.PathAlreadyExists => {
+            try writer.print("Folder '{s}' already exists\n", .{folder});
+            return;
+        }, // Directory already exists, that's fine
+        else => return err,
+    };
+
+    try writer.print("Folder '{s}' created\n", .{folder});
+}

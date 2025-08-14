@@ -40,8 +40,9 @@ pub const Command = enum {
     }
 };
 
-pub const Build = struct {
+pub const Builder = struct {
     output: []u8,
+    source: []u8,
     executable: bool = true,
     run: bool = true,
     debug: bool = true,
@@ -51,11 +52,13 @@ pub const Build = struct {
     pub fn init(allocator: Allocator) !Self {
         return Self{
             .output = try allocator.dupe(u8, "main"),
+            .source = try allocator.dupe(u8, "."),
         };
     }
 
     pub fn deinit(self: *Self, allocator: Allocator) void {
         allocator.free(self.output);
+        allocator.free(self.source);
     }
 };
 
@@ -64,16 +67,19 @@ pub const Action = struct {
     verbose: bool = true,
     folder: []u8,
     // command specific options
-    build: ?Build = null,
+    builder: ?Builder = null,
 
     const Self = @This();
 
     pub fn init(allocator: Allocator) !Action {
-        return Action{ .folder = try allocator.dupe(u8, "./") };
+        return Action{
+            // current directory where the command is executed
+            .folder = try allocator.dupe(u8, "."),
+        };
     }
 
     pub fn deinit(self: *Action, allocator: Allocator) void {
         allocator.free(self.folder);
-        self.build.?.deinit(allocator);
+        self.builder.?.deinit(allocator);
     }
 };
