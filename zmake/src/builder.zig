@@ -16,8 +16,8 @@ fn summary(allocator: Allocator, writer: Writer, perform: action.Action) !void {
 
     const w = buffer.writer();
 
-    try w.print("Command\t{s}\n", .{perform.command.toString()});
-    try w.print("Project\t{s}\n", .{perform.project.?});
+    try w.print("Command\t\t{s}\n", .{perform.command.toString()});
+    try w.print("Folder\t\t{s}\n", .{perform.folder});
     // try w.print("Source\t{s}\n", .{perform.source.?});
     // try w.print("Output\t{s}\n", .{perform.output.?});
     try w.writeAll("\n");
@@ -29,7 +29,7 @@ fn summary(allocator: Allocator, writer: Writer, perform: action.Action) !void {
 pub fn main(allocator: Allocator, writer: Writer, perform: action.Action) !void {
     try summary(allocator, writer, perform);
     // find c and h files within the source project folder
-    const files = findSourceFiles(allocator, perform.source.?) catch |err| {
+    const files = findSourceFiles(allocator, perform.folder) catch |err| {
         return err;
     };
     defer {

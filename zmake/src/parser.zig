@@ -8,64 +8,56 @@ const Allocator = std.mem.Allocator;
 
 const eql = std.mem.eql;
 
-fn validate(perform: *action.Action) !void {
-    // check if all required options exists
-    if (perform.project == null) {
-        return errors.List.ParserInvalidFolder;
-    }
-}
-
 fn parseFolder(allocator: std.mem.Allocator, perform: *action.Action, args: *std.process.ArgIterator) !void {
+    // next argument after --folder which was found in the previous one
     if (args.next()) |folder| {
-        perform.project = try allocator.dupe(u8, folder);
-        // find source folder into the project folder
-        const source = try std.fmt.allocPrint(allocator, "{s}/src", .{folder});
-        defer allocator.free(source);
-        perform.build.folder = try allocator.dupe(u8, source);
+        perform.folder = try allocator.dupe(u8, folder);
     } else {
         return errors.List.ParserInvalidFolderPath;
     }
 }
 
 fn parseBuild(allocator: std.mem.Allocator, perform: *action.Action, args: *std.process.ArgIterator) !void {
+    // init build structure
+    var build = try action.Build.init(allocator);
+
+    // parse arguments
     while (args.next()) |arg| {
-        // folder argument (required)
         if (eql(u8, arg, "--folder")) {
             try parseFolder(allocator, perform, args);
         }
 
+        if (eql(u8, arg, "--no-verbose")) {
+            perform.verbose = false;
+        }
+
+        // specific arguments
         if (eql(u8, arg, "--output")) {
             if (args.next()) |output| {
-                perform.output = try allocator.dupe(u8, output);
+                build.output = try allocator.dupe(u8, output);
             } else {
                 return errors.List.ParserInvalidOutputPath;
             }
         }
 
         if (eql(u8, arg, "--no-debug")) {
-            perform.debug = false;
+            build.debug = false;
+        }
+
+        if (eql(u8, arg, "--library")) {
+            build.executable = false;
         }
 
         if (eql(u8, arg, "--no-run")) {
-            // perform.run_after_build = false;
-        }
-
-        if (eql(u8, arg, "--no-verbose")) {
-            perform.verbose = false;
-        }
-
-        if (eql(u8, arg, "--static-library")) {
-            perform.static_library = true;
-            perform.executable = false;
+            build.run = false;
         }
     }
 
-    try validate(perform);
+    perform.build = build;
 }
 
 fn parseClean(allocator: std.mem.Allocator, perform: *action.Action, args: *std.process.ArgIterator) !void {
     while (args.next()) |arg| {
-        // folder argument (required)
         if (eql(u8, arg, "--folder")) {
             try parseFolder(allocator, perform, args);
         }
@@ -74,25 +66,26 @@ fn parseClean(allocator: std.mem.Allocator, perform: *action.Action, args: *std.
             perform.verbose = false;
         }
     }
-
-    try validate(perform);
 }
 
 pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
     var args = std.process.args();
-    _ = args.skip(); // Skip program name
+    // skip program name
+    _ = args.skip();
 
+    // init performing action with default values (help command)
     var perform = try action.Action.init(allocator);
 
-    // == Parse Mandatory Arguments [COMMAND] ==
-    // next argument after program name must be the command which will be perfomed
+    // next argument after program name (which was skipped)
+    // must be the command which will be perfomed
     const command = action.Command.serialize(args.next()) orelse {
         try helper.main(allocator, writer, .help);
         return errors.List.ParserInvalidCommand;
     };
+    // update performing action with the command
     perform.command = command;
 
-    // == Parse Optional Arguments [OPTIONS] by command ==
+    // parse command argument by command
     switch (perform.command) {
         .build => parseBuild(allocator, &perform, &args) catch |err| {
             try helper.main(allocator, writer, .build);
