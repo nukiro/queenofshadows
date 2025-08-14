@@ -33,9 +33,9 @@ pub const Command = enum {
 
     pub fn toString(self: Self) []const u8 {
         return switch (self) {
-            .build => "BUILD",
-            .clean => "CLEAN",
-            .help => "HELP",
+            .build => "Build",
+            .clean => "Clean",
+            .help => "Help",
         };
     }
 };

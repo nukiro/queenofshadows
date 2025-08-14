@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const List = error{
+pub const _ = error{
     BuildNoSourceFiles,
     BuildCompilationFailed,
     BuildExecutionFailed,

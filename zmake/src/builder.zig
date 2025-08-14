@@ -11,15 +11,23 @@ const Writer = std.fs.File.Writer;
 const ArrayList = std.ArrayList;
 
 fn summary(allocator: Allocator, writer: Writer, perform: action.Action) !void {
+    const build = perform.build.?;
+
     var buffer = std.ArrayList(u8).init(allocator);
     defer buffer.deinit();
 
     const w = buffer.writer();
 
-    try w.print("Command\t\t{s}\n", .{perform.command.toString()});
-    try w.print("Folder\t\t{s}\n", .{perform.folder});
-    // try w.print("Source\t{s}\n", .{perform.source.?});
-    // try w.print("Output\t{s}\n", .{perform.output.?});
+    try w.writeAll("\x1b[1;4mBuild Command\x1b[0m\n");
+    try w.print("Folder\t=> {s}\n", .{perform.folder});
+    if (build.debug) try w.writeAll("Debug\t=> True\n");
+
+    if (build.executable) {
+        try w.print("The executable: '{s}' will be built. ", .{build.output});
+        if (build.run) try w.writeAll("It will be executed after the compilation.");
+        try w.writeAll("\n");
+    } else try w.print("The library: '{s}' will be built.\n", .{build.output});
+
     try w.writeAll("\n");
 
     // throw it to the terminal
@@ -28,10 +36,9 @@ fn summary(allocator: Allocator, writer: Writer, perform: action.Action) !void {
 
 pub fn main(allocator: Allocator, writer: Writer, perform: action.Action) !void {
     try summary(allocator, writer, perform);
+
     // find c and h files within the source project folder
-    const files = findSourceFiles(allocator, perform.folder) catch |err| {
-        return err;
-    };
+    const files = try findSourceFiles(allocator, perform.folder);
     defer {
         for (files.items) |file| {
             allocator.free(file);
@@ -53,10 +60,7 @@ pub fn main(allocator: Allocator, writer: Writer, perform: action.Action) !void 
 }
 
 fn findSourceFilesRecursive(allocator: Allocator, folder: []const u8, source_files: *ArrayList([]const u8)) !void {
-    var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
-        error.FileNotFound => return,
-        else => return err,
-    };
+    var dir = try std.fs.cwd().openDir(folder, .{ .iterate = true });
     defer dir.close();
 
     var iterator = dir.iterate();
@@ -90,22 +94,17 @@ fn findSourceFilesRecursive(allocator: Allocator, folder: []const u8, source_fil
 fn findSourceFiles(allocator: std.mem.Allocator, folder: []const u8) !ArrayList([]const u8) {
     var source_files = ArrayList([]const u8).init(allocator);
 
+    // check if the directory exists
     var dir = std.fs.cwd().openDir(folder, .{ .iterate = true }) catch |err| switch (err) {
-        error.FileNotFound => {
-            // std.debug.print("Error: Folder '{s}' not found\n", .{folder});
-            return errors.List.BuildInvalidFolder;
-        },
+        error.FileNotFound => return error.BuildInvalidFolder,
         else => return err,
     };
     defer dir.close();
 
-    // Recursively find all .c files
+    // Recursively find all files
     try findSourceFilesRecursive(allocator, folder, &source_files);
 
-    if (source_files.items.len == 0) {
-        std.debug.print("Error: No .c files found in folder '{s}'\n", .{folder});
-        return errors.List.BuildNoSourceFiles;
-    }
+    if (source_files.items.len == 0) return error.BuildNoSourceFiles;
 
     return source_files;
 }

@@ -13,7 +13,7 @@ fn parseFolder(allocator: std.mem.Allocator, perform: *action.Action, args: *std
     if (args.next()) |folder| {
         perform.folder = try allocator.dupe(u8, folder);
     } else {
-        return errors.List.ParserInvalidFolderPath;
+        return error.ParserInvalidFolderPath;
     }
 }
 
@@ -36,7 +36,7 @@ fn parseBuild(allocator: std.mem.Allocator, perform: *action.Action, args: *std.
             if (args.next()) |output| {
                 build.output = try allocator.dupe(u8, output);
             } else {
-                return errors.List.ParserInvalidOutputPath;
+                return error.ParserInvalidOutputPath;
             }
         }
 
@@ -80,7 +80,7 @@ pub fn parser(allocator: Allocator, writer: std.fs.File.Writer) !action.Action {
     // must be the command which will be perfomed
     const command = action.Command.serialize(args.next()) orelse {
         try helper.main(allocator, writer, .help);
-        return errors.List.ParserInvalidCommand;
+        return error.ParserInvalidCommand;
     };
     // update performing action with the command
     perform.command = command;
