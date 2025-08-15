@@ -1,6 +1,7 @@
 const std = @import("std");
 
-pub fn objects(allocator: std.mem.Allocator, files: std.ArrayList([]const u8), folder: []const u8, verbose: bool) void {
+pub fn objects(allocator: std.mem.Allocator, files: std.ArrayList([]const u8), folder: []const u8, verbose: bool) !void {
+    std.debug.print("cleaning objects", .{});
     // Try to remove obj directory if it's empty
     const obj_dir = try std.fmt.allocPrint(allocator, "{s}/obj", .{folder});
     defer allocator.free(obj_dir);

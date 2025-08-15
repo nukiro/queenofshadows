@@ -50,7 +50,7 @@ pub fn main(allocator: Allocator, writer: Writer, perform: action.Action) !void 
     }
 
     // build the project: executable or a library
-    _ = try build.executable(allocator, writer, perform);
+    _ = try build.executable(allocator, writer, perform, files);
 
     // run if it is required
 }

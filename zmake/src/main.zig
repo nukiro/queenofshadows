@@ -12,7 +12,6 @@ const builder = @import("builder/builder.zig");
 const print = std.debug.print;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
-const BuildError = errors.BuildError;
 
 // fn compileLibSourceFile(allocator: Allocator, config: *const action.Action, source_file: []const u8) ![]const u8 {
 //     var cmd_args = ArrayList([]const u8).init(allocator);
@@ -136,12 +135,12 @@ fn linkLibObjectFiles(allocator: Allocator, config: *const action.Action, object
         .Exited => |code| {
             if (code != 0) {
                 print("Linking failed with exit code: {d}\n", .{code});
-                return BuildError.CompilationFailed;
+                return error.BuildCompilationFailed;
             }
         },
         else => {
             print("Linking process terminated unexpectedly\n", .{});
-            return BuildError.CompilationFailed;
+            return error.BuildCompilationFailed;
         },
     }
 
@@ -271,7 +270,7 @@ fn cleanAllArtifacts(allocator: Allocator, config: *const action.Action) !void {
     var obj_dir = std.fs.cwd().openDir(obj_dir_path, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound => {
             print("Error: Folder '{s}' not found\n", .{obj_dir_path});
-            return BuildError.InvalidFolder;
+            return error.BuildInvalidFolder;
         },
         else => return err,
     };
